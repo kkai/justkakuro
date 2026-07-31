@@ -57,6 +57,19 @@ Single Xcode project, objectVersion 77 with `PBXFileSystemSynchronizedRootGroup`
 - Fast engine iteration without the simulator: compile the engine into a CLI binary —
   `swiftc -O -o bench Kakuro/Engine/*.swift main.swift` (Engine has no UIKit/SwiftUI imports; keep it that way). Write benchmark output to stderr (stdout is block-buffered under a pipe)
 
+## Actor isolation in `Kakuro/Design/`
+
+The project sets `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`, so **every unannotated type is `@MainActor`** — including closures it hands to UIKit.
+
+- `Theme` and `Motion` are **`nonisolated`**, and that is load-bearing. `UIColor.init(dynamicProvider:)` is imported without `NS_SWIFT_SENDABLE`, so a closure literal passed to it inherits MainActor isolation and Swift 6 emits an executor assertion in its prologue. UIKit resolves dynamic colors on `com.apple.SwiftUI.AsyncRenderer`, so that assertion trips and the app traps (`EXC_BREAKPOINT`). It shipped this way and crashed **intermittently, anywhere** — including idle on Home — because whether a given resolve lands off-main is a race.
+- `Haptics` is `@MainActor` and must stay so (`UIFeedbackGenerator` is `NS_SWIFT_UI_ACTOR`; `enabled` is mutable global state).
+- **Never hand a closure to an unannotated UIKit API from MainActor-isolated code.** Mark the type `nonisolated` *and* the closure `@Sendable`.
+- Guarded three ways by `ThemeIsolationTests`: a compile-time guard (`nonisolated` helpers that fail the *build* if the annotation is lost), a runtime guard resolving every color off-main, and a source scan that fails if a dynamic provider appears outside `Theme.swift`.
+
+## View identity: a screen must outlive the state that created it
+
+`ContentView`'s `.resumeGame` destination used to read `progress.savedGame` inline. Once that became observable, winning — which clears the save — invalidated the destination and swapped the live game for `MissingSaveView` *mid-celebration*, so the win sheet never appeared. `ResumeGameView` now resolves the snapshot **once** on appear. Resolve navigation input into `@State` at entry; don't re-derive a screen's existence from mutable state it will itself mutate.
+
 ## Persistence invariants
 
 - The saved game must be written **as the player works** (`GameView.persist()` on board change, scene backgrounding, and disappear). Saving only on `game.phase` change silently loses everything: a game that is started and never paused never changes phase
@@ -74,7 +87,13 @@ venv/bin/idb ui describe-all --udid <udid>            # accessibility tree = ele
 venv/bin/idb ui tap --udid <udid> <x> <y>             # coordinates are POINTS, not pixels
 ```
 
-**Only the first `idb ui tap` in a shell invocation reliably registers** — later taps in the same command silently no-op, which reads exactly like a broken feature. Use one tap per Bash call, and confirm each state change from `describe-all` before concluding anything about the app.
+**Drive from a single Python process, not a shell loop.** Chained `idb ui tap` calls in one Bash invocation drop taps; the same taps issued via `subprocess` from one Python script land reliably (16 in a row, verified). An earlier note here claimed "only the first tap per shell invocation registers" and blamed idb — that was mostly the Theme isolation crash killing the app mid-sequence. Both effects exist; the Python driver avoids both.
+
+**Confirm every tap from the tree, and check liveness separately.** A dropped tap and a dead app look identical from the outside. After each tap re-read `describe-all` and assert the label changed; check `xcrun simctl spawn <udid> launchctl list | grep -i kakuro` for liveness, and diff `~/Library/Logs/DiagnosticReports/` (note: reports get rotated into `Retired/`) for new `.ips` files.
+
+**`KakuroGame.tap()` toggles selection.** Tapping an already-selected cell *deselects* it, so the next digit press is a no-op. A driver that re-taps a cell it already selected will look like the app is ignoring input.
+
+**Getting a puzzle's solution:** read the app's own save — `xcrun simctl get_app_container <udid> de.kaikunze.kakuro data` → `Library/Preferences/de.kaikunze.kakuro.plist` → `plistlib` → `json.loads(pl["kakuro.saveGame.v1"])` → `generated.puzzle.cells[r][c].white.solution`. The save only exists after a board change or a backgrounding, and `[GridPosition: Int]` encodes as a **flat alternating array**, not an object. Read while booted (cfprefsd serves the live value); only *write* with the sim shut down.
 
 ## Calibration workflow
 

@@ -1,7 +1,14 @@
 import SwiftUI
 
 /// Named motion tokens — views never use inline animation values.
-enum Motion {
+///
+/// `nonisolated` for the same reason as `Theme`: under
+/// `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` these would be MainActor-isolated
+/// statics read during off-main render passes. Nothing here is implicated in the
+/// crash `Theme` caused — no closure escapes to UIKit — but every member is a
+/// `Sendable` value type, so this costs nothing and keeps the design tokens
+/// uniformly safe to read from any isolation domain.
+nonisolated enum Motion {
     /// Snappy spring for digit entry (scale 1.12 → 1.0).
     static let digitEntry = Animation.spring(response: 0.25, dampingFraction: 0.7)
     /// Note toggles and small state flips.

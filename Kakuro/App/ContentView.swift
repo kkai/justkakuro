@@ -26,11 +26,7 @@ struct ContentView: View {
         case .game(let size, let difficulty):
             GameLoaderView(size: size, difficulty: difficulty)
         case .resumeGame:
-            if let snapshot = progress.loadSavedGame() {
-                GameHostView(game: KakuroGame(snapshot: snapshot))
-            } else {
-                MissingSaveView()
-            }
+            ResumeGameView()
         case .tutorial(let technique):
             TutorialView(technique: technique)
         case .practice(let technique):
@@ -80,6 +76,37 @@ struct GameLoaderView: View {
                 fresh.fillAutoNotes()
             }
             game = fresh
+        }
+    }
+}
+
+/// Resolves the saved game **once**, on entry.
+///
+/// Reading `progress.savedGame` directly in the navigation destination meant the
+/// destination re-evaluated whenever the store changed — and winning clears the
+/// save, so the live game was swapped out for `MissingSaveView` mid-celebration
+/// and the win sheet never appeared. The game must outlive its own save.
+struct ResumeGameView: View {
+    @Environment(ProgressStore.self) private var progress
+
+    @State private var game: KakuroGame?
+    @State private var resolved = false
+
+    var body: some View {
+        ZStack {
+            Theme.paper.ignoresSafeArea()
+            if let game {
+                GameHostView(game: game)
+            } else if resolved {
+                MissingSaveView()
+            }
+        }
+        .onAppear {
+            guard !resolved else { return }
+            if let snapshot = progress.loadSavedGame() {
+                game = KakuroGame(snapshot: snapshot)
+            }
+            resolved = true
         }
     }
 }

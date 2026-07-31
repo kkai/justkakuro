@@ -4,7 +4,18 @@ import UIKit
 /// Semantic color and type tokens. Ink-and-indigo on washi paper: Kakuro is a
 /// newspaper puzzle, so numerals are serif (New York), chrome is quiet, and the
 /// diagonal of the clue cell is the app's signature motif.
-enum Theme {
+///
+/// `nonisolated` is load-bearing, not tidiness. The project builds with
+/// `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`, so without it `Theme` — and the
+/// provider closure in `dynamic(light:dark:)` — is implicitly `@MainActor`.
+/// UIKit imports `-initWithDynamicProvider:` without `NS_SWIFT_SENDABLE`, so the
+/// closure inherits that isolation and Swift 6 emits an executor assertion in
+/// its prologue. UIKit resolves dynamic colors from SwiftUI's
+/// `com.apple.SwiftUI.AsyncRenderer` thread, which trips the assertion and traps
+/// (EXC_BREAKPOINT). It fired intermittently — anywhere, including an idle Home
+/// screen — because whether a given resolve lands off-main is a race.
+/// Guarded by ThemeIsolationTests.
+nonisolated enum Theme {
 
     // MARK: - Colors (light / dark pairs)
 
@@ -44,10 +55,16 @@ enum Theme {
     static let hairline = dynamic(light: UIColor(red: 0.133, green: 0.149, blue: 0.169, alpha: 0.16),
                                   dark: UIColor(red: 0.910, green: 0.914, blue: 0.894, alpha: 0.14))
 
+    /// The closure is *also* explicitly `@Sendable`. That is redundant while
+    /// `Theme` is `nonisolated` — a `@Sendable` closure never inherits actor
+    /// isolation — and deliberately so: either annotation alone prevents the
+    /// executor-assertion prologue, so losing one does not silently bring the
+    /// trap back. `dynamicProvider:` is spelled out rather than the trailing
+    /// closure `UIColor { … }` so the dangerous API stays greppable.
     private static func dynamic(light: UIColor, dark: UIColor) -> Color {
-        Color(UIColor { trait in
+        Color(UIColor(dynamicProvider: { @Sendable trait in
             trait.userInterfaceStyle == .dark ? dark : light
-        })
+        }))
     }
 
     // MARK: - Type
