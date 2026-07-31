@@ -1,0 +1,73 @@
+import SwiftUI
+import UIKit
+
+/// Semantic color and type tokens. Ink-and-indigo on washi paper: Kakuro is a
+/// newspaper puzzle, so numerals are serif (New York), chrome is quiet, and the
+/// diagonal of the clue cell is the app's signature motif.
+enum Theme {
+
+    // MARK: - Colors (light / dark pairs)
+
+    /// Cool washi paper / near-black ink field.
+    static let paper = dynamic(light: UIColor(red: 0.949, green: 0.953, blue: 0.933, alpha: 1),
+                               dark: UIColor(red: 0.078, green: 0.086, blue: 0.102, alpha: 1))
+    /// Card and cell surfaces. In dark mode this carries the whole "playable vs
+    /// blocked" read, so it sits well above `paper` and far above `block` — at
+    /// near-equal darkness the grid turns into an unreadable field.
+    static let surface = dynamic(light: .white,
+                                 dark: UIColor(red: 0.224, green: 0.239, blue: 0.278, alpha: 1))
+    /// Graphite ink for entered digits and primary text.
+    static let ink = dynamic(light: UIColor(red: 0.133, green: 0.149, blue: 0.169, alpha: 1),
+                             dark: UIColor(red: 0.910, green: 0.914, blue: 0.894, alpha: 1))
+    /// Secondary text, notes, quiet labels.
+    static let inkSoft = dynamic(light: UIColor(red: 0.133, green: 0.149, blue: 0.169, alpha: 0.55),
+                                 dark: UIColor(red: 0.910, green: 0.914, blue: 0.894, alpha: 0.55))
+    /// Block cells: deep indigo-charcoal, the "filled ink" of the grid.
+    static let block = dynamic(light: UIColor(red: 0.169, green: 0.196, blue: 0.251, alpha: 1),
+                               dark: UIColor(red: 0.035, green: 0.041, blue: 0.055, alpha: 1))
+    /// Clue numerals on block cells.
+    static let clueText = dynamic(light: UIColor(red: 0.949, green: 0.953, blue: 0.933, alpha: 0.92),
+                                  dark: UIColor(red: 0.910, green: 0.914, blue: 0.894, alpha: 0.80))
+    /// Indigo: selection, interactive tint, focus.
+    static let indigo = dynamic(light: UIColor(red: 0.231, green: 0.357, blue: 0.647, alpha: 1),
+                                dark: UIColor(red: 0.486, green: 0.592, blue: 0.847, alpha: 1))
+    /// Soft indigo wash for selected/related cells.
+    static let indigoWash = dynamic(light: UIColor(red: 0.231, green: 0.357, blue: 0.647, alpha: 0.14),
+                                    dark: UIColor(red: 0.486, green: 0.592, blue: 0.847, alpha: 0.20))
+    /// Seal red, reserved for errors only.
+    static let error = dynamic(light: UIColor(red: 0.769, green: 0.263, blue: 0.220, alpha: 1),
+                               dark: UIColor(red: 0.898, green: 0.451, blue: 0.404, alpha: 1))
+    /// Success/completion sweep tint.
+    static let complete = dynamic(light: UIColor(red: 0.282, green: 0.522, blue: 0.416, alpha: 1),
+                                  dark: UIColor(red: 0.463, green: 0.702, blue: 0.588, alpha: 1))
+    /// Hairlines and grid lines.
+    static let hairline = dynamic(light: UIColor(red: 0.133, green: 0.149, blue: 0.169, alpha: 0.16),
+                                  dark: UIColor(red: 0.910, green: 0.914, blue: 0.894, alpha: 0.14))
+
+    private static func dynamic(light: UIColor, dark: UIColor) -> Color {
+        Color(UIColor { trait in
+            trait.userInterfaceStyle == .dark ? dark : light
+        })
+    }
+
+    // MARK: - Type
+
+    /// Entered digits: serif, the newspaper numeral.
+    static func digitFont(size: CGFloat) -> Font {
+        .system(size: size, weight: .semibold, design: .serif)
+    }
+
+    /// Clue numerals on block cells.
+    static func clueFont(size: CGFloat) -> Font {
+        .system(size: size, weight: .medium, design: .serif)
+    }
+
+    /// Pencil notes.
+    static func noteFont(size: CGFloat) -> Font {
+        .system(size: size, weight: .medium, design: .default)
+    }
+
+    /// Display face for titles — serif carries the wordmark.
+    static let title = Font.system(.largeTitle, design: .serif, weight: .bold)
+    static let heading = Font.system(.title2, design: .serif, weight: .semibold)
+}
