@@ -29,6 +29,15 @@ struct GameView: View {
             Theme.paper.ignoresSafeArea()
             layout
                 .padding(16)
+                #if os(tvOS)
+                // The board keeps its focusable cells while the chooser is over
+                // it, so arrowing inside the chooser walked focus straight out
+                // onto the hidden grid behind: the panel stayed on screen with
+                // nothing in it focused and no key doing anything. Disabling the
+                // board takes its cells out of the focus engine entirely for as
+                // long as the chooser is up.
+                .disabled(choosingDigit)
+                #endif
             if game.phase == .paused {
                 pauseOverlay
             }

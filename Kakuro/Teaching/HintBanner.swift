@@ -25,30 +25,35 @@ struct HintBanner: View {
                         .textCase(.uppercase)
                 }
                 Spacer()
-                Button(action: onDismiss) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: Metrics.glyph, weight: .semibold))
-                        .foregroundStyle(Theme.inkSoft)
-                }
-                .accessibilityLabel("Dismiss hint")
+                // On tvOS this moves into the action row below, so that every
+                // control in the banner sits on one horizontal line. Up here it
+                // is diagonally above "Tell me more", and the focus engine
+                // searches straight lines: pressing left from the cross found
+                // nothing and dropped focus back onto the board, which left the
+                // hint readable but impossible to escalate or apply.
+                #if !os(tvOS)
+                dismissButton
+                #endif
             }
             Text(hint.text)
                 .font(.subheadline)
                 .foregroundStyle(Theme.ink)
                 .fixedSize(horizontal: false, vertical: true)
-            HStack {
+            HStack(spacing: 12) {
                 if hint.isLocked {
                     Button(action: onUnlock) {
                         Text("Unlock hints")
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(Theme.indigo)
                     }
+                    .buttonStyle(.kakuro)
                 } else if hint.level < .resolution {
                     Button(action: onMore) {
                         Text("Tell me more")
                             .font(.subheadline.weight(.medium))
                             .foregroundStyle(Theme.indigo)
                     }
+                    .buttonStyle(.kakuro)
                 }
                 Spacer()
                 if hint.level == .resolution, !hint.isErrorHint {
@@ -62,6 +67,9 @@ struct HintBanner: View {
                     }
                     .buttonStyle(.kakuro)
                 }
+                #if os(tvOS)
+                dismissButton
+                #endif
             }
         }
         .padding(14)
@@ -70,5 +78,15 @@ struct HintBanner: View {
                 .fill(Theme.surface)
                 .shadow(color: .black.opacity(0.08), radius: 12, y: 4)
         )
+    }
+
+    private var dismissButton: some View {
+        Button(action: onDismiss) {
+            Image(systemName: "xmark")
+                .font(.system(size: Metrics.glyph, weight: .semibold))
+                .foregroundStyle(Theme.inkSoft)
+        }
+        .buttonStyle(.kakuro)
+        .accessibilityLabel("Dismiss hint")
     }
 }
