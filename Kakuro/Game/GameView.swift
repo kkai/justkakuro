@@ -35,13 +35,16 @@ struct GameView: View {
             #if os(tvOS)
             if choosingDigit {
                 Color.black.opacity(0.45).ignoresSafeArea()
-                DigitChooser(notesMode: game.notesMode,
-                             canErase: game.selected.map { game.board.entry(at: $0) != nil
-                                 || !game.board.notes(at: $0).isEmpty } ?? false) { command in
-                    game.handle(command)
-                } close: {
-                    choosingDigit = false
-                }
+                DigitChooser(
+                    notesMode: game.notesMode,
+                    canErase: game.selected.map { game.board.entry(at: $0) != nil
+                        || !game.board.notes(at: $0).isEmpty } ?? false,
+                    paused: game.phase == .paused,
+                    handle: { game.handle($0) },
+                    onHint: { requestHint() },
+                    onAutoNotes: { game.fillAutoNotes() },
+                    onPause: { game.phase == .paused ? game.resume() : game.pause() },
+                    close: { choosingDigit = false })
                 .transition(.scale(scale: 0.92).combined(with: .opacity))
             }
             #endif
@@ -142,11 +145,13 @@ struct GameView: View {
         // off the board into it, and then every digit would cost a trip across
         // the screen and back. The chooser opens where the eye already is.
         VStack(spacing: 24) {
-            HStack(spacing: 16) {
-                statusRow
-                tvControls
-            }
-            .frame(maxWidth: Metrics.column)
+            // Spans the full width on purpose. Capped to the reading column it
+            // was narrower than the board beneath it, so pressing up from most
+            // columns found nothing above and the hint controls were
+            // unreachable. The focus engine looks along the direction of travel,
+            // so the row has to cover every column the board occupies.
+            statusRow
+                .frame(maxWidth: .infinity)
             boardSection
             Text(game.selected == nil
                  ? "Move with the remote to pick a square"
@@ -186,7 +191,6 @@ struct GameView: View {
             }
         }
         .buttonStyle(.kakuro)
-        .focusSection()
     }
     #endif
 
@@ -253,9 +257,6 @@ struct GameView: View {
                       choosingDigit = true
                       #endif
                   })
-        #if os(tvOS)
-        .focusSection()
-        #endif
     }
 
     private var hintHighlights: Set<GridPosition> {

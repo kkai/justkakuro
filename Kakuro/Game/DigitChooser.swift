@@ -15,7 +15,16 @@ struct DigitChooser: View {
     /// Notes mode is shown so the player can see which mode they are placing in.
     let notesMode: Bool
     let canErase: Bool
+    let paused: Bool
     let handle: (PuzzleKeyCommand) -> Void
+    /// Board-level actions that are not digit entry. They live here because the
+    /// alternative was a separate control strip on the screen, and focus could
+    /// not reliably travel between it and the grid: the remote would go up out
+    /// of the board and find nothing, or worse, get in and not get back. One
+    /// focusable surface at a time removes the whole class of problem.
+    let onHint: () -> Void
+    let onAutoNotes: () -> Void
+    let onPause: () -> Void
     let close: () -> Void
 
     @FocusState private var focused: PuzzleKeyCommand?
@@ -44,8 +53,16 @@ struct DigitChooser: View {
                 }
                 .disabled(!canErase)
             }
+            HStack(spacing: 16) {
+                action("Hint", "lightbulb", onHint)
+                action("Auto notes", "wand.and.stars", onAutoNotes)
+                action(paused ? "Resume" : "Pause", paused ? "play" : "pause", onPause)
+            }
         }
         .padding(40)
+        // Without a cap the grid takes the full 1920pt and the digits become
+        // wide letterbox bars rather than keys.
+        .frame(width: 900)
         .background(
             RoundedRectangle(cornerRadius: 28, style: .continuous)
                 .fill(Theme.paper)
@@ -55,6 +72,24 @@ struct DigitChooser: View {
         // The Menu button backs out without placing anything. Without this the
         // only way to close would be to enter a digit you did not want.
         .onExitCommand(perform: close)
+    }
+
+    /// A board action rather than a digit. Always closes: none of these are
+    /// modes you would fire twice in a row.
+    private func action(_ title: String, _ symbol: String,
+                        _ perform: @escaping () -> Void) -> some View {
+        Button {
+            perform()
+            close()
+        } label: {
+            Label(title, systemImage: symbol)
+                .font(.title3)
+                .foregroundStyle(Theme.inkSoft)
+                .frame(maxWidth: .infinity, minHeight: 72)
+                .background(RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Theme.surface.opacity(0.6)))
+        }
+        .buttonStyle(.kakuro)
     }
 
     private func key(_ command: PuzzleKeyCommand,
