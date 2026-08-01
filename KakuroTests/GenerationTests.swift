@@ -66,16 +66,47 @@ import Testing
         }
     }
 
-    /// Every fallback must come back instantly and already graded.
+    /// Every fallback must come back instantly, already graded, and — the part
+    /// this test used to promise in its name without checking — unique.
     @Test func fallbackPuzzleReturnsAVerifiedBoard() {
         for size in BoardSize.allCases {
             for seed in 0..<6 {
                 var rng = SeededRandomNumberGenerator(seed: UInt64(seed))
-                let generated = KakuroGenerator.fallbackPuzzle(size: size, rng: &rng)
+                let generated = KakuroGenerator.verifiedFallback(size: size, rng: &rng)
                 #expect(generated.puzzle.rows == size.dimension)
+                let counted = BacktrackingSolver.countSolutions(generated.puzzle, limit: 2,
+                                                                nodeLimit: 200_000)
+                #expect(!counted.aborted, "fallback \(size) seed \(seed) uniqueness check aborted")
+                #expect(counted.count == 1, "fallback \(size) seed \(seed) is not unique")
                 #expect(LogicalSolver.solve(generated.puzzle).solved,
                         "fallback \(size) seed \(seed) not logically solvable")
             }
+        }
+    }
+
+    /// Cancellation must not be a hole in the uniqueness guarantee: a cancelled
+    /// generate still returns a shippable board (it unwinds to the fallback).
+    @Test func cancelledGenerationStillReturnsAShippableBoard() {
+        for size in BoardSize.allCases {
+            let generated = KakuroGenerator.generate(
+                .init(size: size, difficulty: .medium, seed: 4242),
+                control: .init(isCancelled: { true }))
+            assertShippable(generated, size: size, seed: 4242)
+        }
+    }
+
+    /// Progress reporting is a pure side effect — it must not touch the RNG
+    /// stream, or the same seed would stop producing the same board.
+    @Test func generationIsDeterministicUnderProgressReporting() {
+        for size in BoardSize.allCases {
+            let plain = KakuroGenerator.generate(.init(size: size, difficulty: .medium, seed: 777))
+            nonisolated(unsafe) var seen: [Double] = []
+            let watched = KakuroGenerator.generate(
+                .init(size: size, difficulty: .medium, seed: 777),
+                control: .init(onProgress: { seen.append($0) }))
+            #expect(plain.puzzle == watched.puzzle, "\(size) board changed under progress reporting")
+            #expect(plain.difficulty == watched.difficulty)
+            #expect(seen.allSatisfy { $0 >= 0 && $0 <= 1 }, "progress out of range: \(seen)")
         }
     }
 

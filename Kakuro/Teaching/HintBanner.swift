@@ -7,6 +7,7 @@ struct HintBanner: View {
     let onMore: () -> Void
     let onApply: () -> Void
     let onDismiss: () -> Void
+    var onUnlock: () -> Void = {}
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -36,7 +37,13 @@ struct HintBanner: View {
                 .foregroundStyle(Theme.ink)
                 .fixedSize(horizontal: false, vertical: true)
             HStack {
-                if hint.level < .resolution {
+                if hint.isLocked {
+                    Button(action: onUnlock) {
+                        Text("Unlock hints")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Theme.indigo)
+                    }
+                } else if hint.level < .resolution {
                     Button(action: onMore) {
                         Text("Tell me more")
                             .font(.subheadline.weight(.medium))

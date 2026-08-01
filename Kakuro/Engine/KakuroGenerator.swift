@@ -48,33 +48,80 @@ nonisolated enum KakuroGenerator {
         }
     }
 
-    static func generate(_ options: Options) -> GeneratedPuzzle {
+    /// Cancellation and progress, supplied by the caller. Both default to
+    /// no-ops so every existing call site is unaffected.
+    ///
+    /// `isCancelled` is an explicit probe rather than a `Task.isCancelled` read
+    /// inside the Engine: it keeps generation independent of task context and
+    /// testable synchronously. Callers running inside a detached task pass
+    /// `{ Task.isCancelled }` — the closure is *evaluated* on the generating
+    /// task, which is what makes that read mean the right thing.
+    struct Control: Sendable {
+        var isCancelled: @Sendable () -> Bool = { false }
+        /// Fraction of the node budget consumed, 0...1. Throttled — never
+        /// called per node.
+        var onProgress: @Sendable (Double) -> Void = { _ in }
+
+        static let none = Control()
+    }
+
+    /// Always returns a shippable board: unique, logically solvable, graded.
+    /// On cancellation it unwinds to the best-so-far or the baked fallback
+    /// rather than returning nothing — "this result is no longer wanted" is the
+    /// caller's knowledge, not the Engine's.
+    static func generate(_ options: Options, control: Control = .none) -> GeneratedPuzzle {
         var rng = SeededRandomNumberGenerator(seed: options.seed)
-        var best: (puzzle: GeneratedPuzzle, distance: Int)? = nil
+        if let found = search(options, control: control, rng: &rng),
+           let verified = verified(found, size: options.size) {
+            return verified
+        }
+        return verifiedFallback(size: options.size, rng: &rng)
+    }
+
+    /// The search proper. Extracted verbatim from `generate` — **the RNG draw
+    /// order must not change**, since band-match rates and the calibrated
+    /// `DifficultyRater.thresholds` are a pure function of the seeded stream.
+    private static func search(_ options: Options,
+                               control: Control,
+                               rng: inout SeededRandomNumberGenerator) -> KakuroPuzzle? {
+        var best: (puzzle: KakuroPuzzle, distance: Int)? = nil
         var candidatesSeen = 0
-        var nodesRemaining = nodeBudget(for: options.size)
+        let budget = nodeBudget(for: options.size)
+        var nodesRemaining = budget
         var topologiesBuilt = 0
         var topologyAttempts = 0
+        var lastReported = 0.0
 
         while topologiesBuilt < maxTopologyAttempts,
               topologyAttempts < maxTopologyAttempts * 12,
-              nodesRemaining > 0 {
+              nodesRemaining > 0,
+              !control.isCancelled() {
             topologyAttempts += 1
             guard let mask = makeTopology(size: options.size, rng: &rng) else { continue }
             topologiesBuilt += 1
             for _ in 0..<fillsPerTopology {
-                guard nodesRemaining > 0 else { break }
-                guard var grid = fill(mask: mask, difficulty: options.difficulty, rng: &rng) else { continue }
+                guard nodesRemaining > 0, !control.isCancelled() else { break }
+                guard var grid = fill(mask: mask, difficulty: options.difficulty,
+                                      control: control, rng: &rng) else { continue }
                 // Random fills are almost never unique — repair toward
                 // uniqueness by mutating cells where two found solutions differ,
                 // pushing their runs toward low-combination sums.
                 var puzzle = KakuroBuilder.puzzle(fromSolutionGrid: grid)
                 var unique = false
                 for _ in 0..<repairRoundsPerFill {
+                    // The long pole: one repair round is bounded by
+                    // uniquenessNodeLimit, so this is also the worst-case
+                    // cancellation latency (~40k nodes).
+                    if control.isCancelled() { break }
                     let uniqueness = BacktrackingSolver.countSolutions(
                         puzzle, limit: 2,
                         nodeLimit: min(uniquenessNodeLimit, max(nodesRemaining, 1)))
                     nodesRemaining -= uniqueness.nodesUsed
+                    let fraction = 1 - Double(nodesRemaining) / Double(budget)
+                    if fraction - lastReported >= 0.01 {
+                        lastReported = fraction
+                        control.onProgress(fraction)
+                    }
                     if uniqueness.aborted { break }
                     if uniqueness.count == 1 {
                         unique = true
@@ -95,17 +142,12 @@ nonisolated enum KakuroGenerator {
 
                 let score = DifficultyRater.score(profile: logical.histogram, solved: true)
                 let band = DifficultyRater.band(forScore: score, size: options.size)
-                let generated = GeneratedPuzzle(
-                    puzzle: puzzle,
-                    difficulty: band,
-                    techniqueProfile: logical.histogram
-                )
                 if band == options.difficulty {
-                    return generated
+                    return puzzle
                 }
                 let distance = bandDistance(band, options.difficulty)
                 if best == nil || distance < best!.distance {
-                    best = (generated, distance)
+                    best = (puzzle, distance)
                 }
                 candidatesSeen += 1
                 if candidatesSeen >= maxCandidates(for: options.size), let best {
@@ -113,11 +155,51 @@ nonisolated enum KakuroGenerator {
                 }
             }
         }
-        if let best {
-            return best.puzzle
+        return best?.puzzle
+    }
+
+    /// The single gate every shipped board passes. Uniqueness and the hint
+    /// guarantee (fully solvable by curriculum techniques) become runtime facts
+    /// here rather than properties the search happens to maintain.
+    ///
+    /// This cannot reject a board the search returned: that board's in-loop
+    /// proof already completed inside `uniquenessNodeLimit`, so re-walking the
+    /// same finite tree reaches the same answer. It exists to cover the exits
+    /// that had no proof at all — chiefly the baked fallback.
+    private static func verified(_ puzzle: KakuroPuzzle, size: BoardSize) -> GeneratedPuzzle? {
+        let uniqueness = BacktrackingSolver.countSolutions(puzzle, limit: 2, nodeLimit: 200_000)
+        guard !uniqueness.aborted, uniqueness.count == 1 else { return nil }
+        let logical = LogicalSolver.solve(puzzle)
+        guard logical.solved else { return nil }
+        let score = DifficultyRater.score(profile: logical.histogram, solved: true)
+        return GeneratedPuzzle(puzzle: puzzle,
+                               difficulty: DifficultyRater.band(forScore: score, size: size),
+                               techniqueProfile: logical.histogram)
+    }
+
+    /// Deterministic last resort: the first baked grid that passes `verified`.
+    /// Previously this shipped a baked board with no uniqueness check at all,
+    /// and passed `logical.solved` to the rater instead of requiring it — an
+    /// unsolvable grid would have shipped as a high-scoring "hard" puzzle the
+    /// hint engine could not teach.
+    static func verifiedFallback(size: BoardSize,
+                                 rng: inout SeededRandomNumberGenerator) -> GeneratedPuzzle {
+        let grids = bakedSolutions(for: size).shuffled(using: &rng)
+        for grid in grids {
+            if let verified = verified(KakuroBuilder.puzzle(fromSolutionGrid: grid), size: size) {
+                return verified
+            }
         }
-        // Deterministic last resort: a pre-verified board (see fallbackPuzzle).
-        return fallbackPuzzle(size: options.size, rng: &rng)
+        // Unreachable: bakedFallbacksAreUniqueAndSolvable proves every grid.
+        assertionFailure("no baked \(size) fallback passed verification")
+        let puzzle = KakuroBuilder.puzzle(fromSolutionGrid: grids[0])
+        let logical = LogicalSolver.solve(puzzle)
+        return GeneratedPuzzle(
+            puzzle: puzzle,
+            difficulty: DifficultyRater.band(
+                forScore: DifficultyRater.score(profile: logical.histogram, solved: logical.solved),
+                size: size),
+            techniqueProfile: logical.histogram)
     }
 
     private static func bandDistance(_ a: Difficulty, _ b: Difficulty) -> Int {
@@ -338,7 +420,8 @@ nonisolated enum KakuroGenerator {
     /// Digit ordering is biased by difficulty: extreme digits produce extreme
     /// sums (more magic blocks → easier); mid digits produce ambiguous sums.
     static func fill(
-        mask: TopologyMask, difficulty: Difficulty, rng: inout SeededRandomNumberGenerator
+        mask: TopologyMask, difficulty: Difficulty,
+        control: Control = .none, rng: inout SeededRandomNumberGenerator
     ) -> [[Int?]]? {
         let d = mask.dimension
         let positions = mask.white.sorted()
@@ -386,6 +469,10 @@ nonisolated enum KakuroGenerator {
             if index == positions.count { return true }
             steps += 1
             if steps > stepLimit { return false }
+            // The other long pole. Gated so the probe costs nothing per node —
+            // bailing here makes fill return nil and the caller `continue`, and
+            // the outer probe then unwinds the search.
+            if steps & 0x3FF == 0, control.isCancelled() { return false }
             let pos = positions[index]
             let taken = DigitSet.fromDigits(stripMates[pos]!.compactMap { assignment[$0] })
             for digit in digitOrder() where !DigitSet.contains(taken, digit) {
@@ -406,26 +493,13 @@ nonisolated enum KakuroGenerator {
 
     // MARK: - Fallback
 
-    /// Used only when `generate` exhausts its node budget. Randomised search is
-    /// the wrong tool for a last-resort path — a Kakuro fill is almost never
-    /// unique, so a template plus repair can churn for seconds and still hand
-    /// back an ambiguous board. These grids were produced by `generate` and
-    /// machine-verified as uniquely and logically solvable
-    /// (`bakedFallbacksAreUniqueAndSolvable`), so the fallback is instant and
-    /// always yields a puzzle the hint engine can teach.
-    static func fallbackPuzzle(size: BoardSize, rng: inout SeededRandomNumberGenerator) -> GeneratedPuzzle {
-        let grids = bakedSolutions(for: size)
-        let grid = grids.randomElement(using: &rng) ?? grids[0]
-        let puzzle = KakuroBuilder.puzzle(fromSolutionGrid: grid)
-        let logical = LogicalSolver.solve(puzzle)
-        let score = DifficultyRater.score(profile: logical.histogram, solved: logical.solved)
-        return GeneratedPuzzle(
-            puzzle: puzzle,
-            difficulty: DifficultyRater.band(forScore: score, size: size),
-            techniqueProfile: logical.histogram
-        )
-    }
-
+    /// Used only when `generate` exhausts its node budget (or is cancelled).
+    /// Randomised search is the wrong tool for a last-resort path — a Kakuro
+    /// fill is almost never unique, so a template plus repair can churn for
+    /// seconds and still hand back an ambiguous board. These grids were produced
+    /// by `generate` and are re-proved at runtime by `verifiedFallback`, so the
+    /// fallback is instant and always yields a puzzle the hint engine can teach.
+    ///
     /// Verified solution grids, three per size. `nil` marks a non-white cell;
     /// clue sums are derived by `KakuroBuilder`.
     static func bakedSolutions(for size: BoardSize) -> [[[Int?]]] {

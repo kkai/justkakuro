@@ -3,19 +3,27 @@ import SwiftUI
 struct StatsView: View {
     @Environment(ProgressStore.self) private var progress
     @Environment(MasteryTracker.self) private var mastery
+    @Environment(EntitlementStore.self) private var entitlements
 
     var body: some View {
         ZStack {
             Theme.paper.ignoresSafeArea()
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    overviewCard
-                    bestTimesCard
-                    masteryCard
+            // Covers masteryCard too, which is the mastery-tracking surface.
+            // The tracker keeps recording for free players — showing an empty
+            // progress path to somebody who just paid would punish the purchase.
+            if !entitlements.isUnlocked {
+                LockedFeatureView(feature: .stats)
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        overviewCard
+                        bestTimesCard
+                        masteryCard
+                    }
+                    .padding(20)
+                    .frame(maxWidth: 560)
+                    .frame(maxWidth: .infinity)
                 }
-                .padding(20)
-                .frame(maxWidth: 560)
-                .frame(maxWidth: .infinity)
             }
         }
         .navigationTitle("Stats")
@@ -132,6 +140,8 @@ struct StatsView: View {
 
 struct SettingsView: View {
     @Environment(ProgressStore.self) private var progress
+    @Environment(EntitlementStore.self) private var entitlements
+    @Environment(PaywallPresenter.self) private var paywall
 
     var body: some View {
         @Bindable var progress = progress
@@ -148,6 +158,20 @@ struct SettingsView: View {
                     toggleRow("Show errors",
                               subtitle: "Point out contradictions when you ask for a hint",
                               isOn: $progress.settings.showErrors)
+
+                    if !entitlements.isUnlocked {
+                        actionRow("Unlock everything",
+                                  subtitle: "Every lesson, drill, teaching hints, large boards and stats") {
+                            paywall.present(.advancedLessons)
+                        }
+                    }
+                    // Apple requires a restore path for non-consumables, and it
+                    // has to be reachable even when the app already believes it
+                    // is unlocked.
+                    actionRow("Restore purchases",
+                              subtitle: restoreSubtitle) {
+                        Task { await entitlements.restore() }
+                    }
                 }
                 .padding(20)
                 .frame(maxWidth: 560)
@@ -159,6 +183,40 @@ struct SettingsView: View {
         .onChange(of: progress.settings.hapticsEnabled) { _, enabled in
             Haptics.enabled = enabled
         }
+    }
+
+    private var restoreSubtitle: String {
+        switch entitlements.purchaseState {
+        case .restoring: "Checking with the App Store…"
+        case .failed(let message): message
+        default: entitlements.isUnlocked
+            ? "The full game is unlocked on this Apple Account"
+            : "Already bought it? Bring it back on this device"
+        }
+    }
+
+    private func actionRow(_ title: String, subtitle: String,
+                           action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(Theme.indigo)
+                    Text(subtitle)
+                        .font(.footnote)
+                        .foregroundStyle(Theme.inkSoft)
+                        .multilineTextAlignment(.leading)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(Theme.inkSoft)
+            }
+            .padding(14)
+            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.surface))
+        }
+        .buttonStyle(.plain)
     }
 
     private func toggleRow(_ title: String, subtitle: String, isOn: Binding<Bool>) -> some View {

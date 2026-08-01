@@ -4,7 +4,7 @@ Working notes: architecture, invariants, and the things that have already gone w
 
 ## Project Overview
 
-Kakuro is an iPhone/iPad puzzle game (iOS 18+) that teaches players how to play Kakuro, modeled on Zach Gage's *Good Sudoku*: an interactive rules tutorial, a technique curriculum, a context-aware hint engine that explains techniques (not just answers), per-technique practice drills with mastery tracking, and busywork reduction (auto-notes, tap-a-clue combinations, digit highlighting).
+Just Kakuro is an iPhone/iPad puzzle game (iOS 18+) that teaches players how to play Kakuro, modeled on Zach Gage's *Good Sudoku*: an interactive rules tutorial, a technique curriculum, a context-aware hint engine that explains techniques (not just answers), per-technique practice drills with mastery tracking, and busywork reduction (auto-notes, tap-a-clue combinations, digit highlighting).
 
 ### Kakuro rules
 White cells form horizontal/vertical runs. Each run's clue (diagonal-split clue cell: top-right = across, bottom-left = down) is the sum of its digits. Digits 1–9 only; no digit repeats within a run. Exactly one solution per puzzle.
@@ -27,6 +27,10 @@ xcodebuild test -project Kakuro.xcodeproj -scheme Kakuro -destination 'platform=
 
 Always pin `OS=` in destinations — this machine has iOS 18.x and 26.x runtimes and an unpinned name matches multiple simulators.
 
+Two known test-environment quirks:
+- Simulator **cloning for parallel testing intermittently fails** ("Device was allocated but was stuck in creation state"), and killing `CoreSimulatorService` does not always clear it. Fall back to `-destination 'id=<udid>' -parallel-testing-enabled NO`.
+- `ThemeIsolationTests.dynamicColorsResolveOffTheMainThread` **fails under serial (non-cloned) runs** and passes under cloned parallel runs — the `UIColor(Color)` round-trip loses its dynamic provider without a fresh host environment. This is pre-existing and unrelated to app code; verified by stashing all changes and re-running. Do not "fix" the Theme code because of it.
+
 ## Architecture
 
 Single Xcode project, objectVersion 77 with `PBXFileSystemSynchronizedRootGroup` — **new Swift files under `Kakuro/` and `KakuroTests/` are picked up automatically; never edit project.pbxproj to add files.**
@@ -37,6 +41,22 @@ Single Xcode project, objectVersion 77 with `PBXFileSystemSynchronizedRootGroup`
 - `Kakuro/Teaching/` — `HintEngine` (nudge → technique → highlight → resolution escalation), tutorial script DSL + fixture puzzles, practice drills, `MasteryTracker`
 - `Kakuro/Design/` — `Theme` (semantic colors), `Motion` (named spring tokens only — no inline animation values), `Haptics`
 - `Kakuro/Persistence/` — `ProgressStore` (@Observable, UserDefaults + Codable, versioned keys `kakuro.*.v1`, `init(userDefaults:)` seam for tests)
+- `Kakuro/Store/` — the one-time unlock. `FeatureGate` (all gating as pure `nonisolated` functions — no StoreKit, exhaustively tested), `EntitlementStore` (@Observable, StoreKit behind an `EntitlementSource` protocol seam), `PaywallPresenter` + `PaywallView` + `LockedFeatureView`
+
+## Monetization
+
+One non-consumable, `de.kaikunze.kakuro.full`, $4.99. No ads, no subscription. ASC IAP id `6796737529`.
+
+**Free:** Learn lessons 1–3 (rules / No Repeats / Magic Blocks), small + medium boards, every difficulty on them, and the "something here is wrong" error hint.
+**Paid:** lessons 4–9, all Practice drills, mastery *display*, the escalating `HintEngine` ladder, large boards, Stats.
+
+- **All gating decisions live in `FeatureGate`**, not scattered through views. Add a gate there and call it; `EntitlementTests` asserts the free set exactly, so a drifted gate fails a test rather than shipping.
+- **`Transaction.currentEntitlements` is authoritative; `kakuro.entitlement.v1` is a display hint** so the first frame after a cold launch doesn't show locks to somebody who paid. `EntitlementSource.isOwned` returns `Bool?` — **`nil` means "couldn't determine" and must never downgrade**, or offline players lose what they bought. Read the comment on `Key.unlocked` before changing any of this.
+- The `Transaction.updates` listener starts in `EntitlementStore.init`, not a view's `.task` — it has to be live before any transaction completes.
+- **Gate the mastery display, not `MasteryTracker` itself.** It keeps recording for free players; showing an empty progress path to someone who just paid would punish the purchase.
+- **Withholding a hint must not call `mastery.recordHint`** — that would silently damage the player's progress path for a hint they never saw. `HintPolicy` defaults to `.full` so existing `HintEngineTests` call sites are untouched.
+- Paywalled rows stay **tappable** (they present the paywall); only mastery-locked rows are `.disabled`. A dead row neither teaches nor sells.
+- Simulator testing: `StoreKit/Kakuro.storekit`, wired via the **shared** scheme at `Kakuro.xcodeproj/xcshareddata/xcschemes/Kakuro.xcscheme` (`<StoreKitConfigurationFileReference>`). Keep the config outside `Kakuro/` — the synchronized root group would otherwise ship it inside the app bundle. Note the scheme's `<TestAction>` must not contain an empty `<TestPlans>` element; that makes xcodebuild report "not configured for the test action".
 
 ## Conventions
 
@@ -95,6 +115,53 @@ venv/bin/idb ui tap --udid <udid> <x> <y>             # coordinates are POINTS, 
 
 **Getting a puzzle's solution:** read the app's own save — `xcrun simctl get_app_container <udid> de.kaikunze.kakuro data` → `Library/Preferences/de.kaikunze.kakuro.plist` → `plistlib` → `json.loads(pl["kakuro.saveGame.v1"])` → `generated.puzzle.cells[r][c].white.solution`. The save only exists after a board change or a backgrounding, and `[GridPosition: Int]` encodes as a **flat alternating array**, not an object. Read while booted (cfprefsd serves the live value); only *write* with the sim shut down.
 
+## Tutorial lessons: bake the early curriculum
+
+`TutorialPuzzles.bakedTechniques` is the source of truth for which lessons have a hand-authored board and script; `TutorialFixtureTests` iterates it, so the list cannot drift.
+
+Lesson 2 (`duplicateInRun`) used to fall through to `generatedLesson` → `PracticeDrills.drillPuzzle`, which runs **up to 25 serial `KakuroGenerator.generate` calls** — measured at **0.66s native -O**, so ~3.3s in a debug simulator and worse on older hardware. It also *never succeeded*: all 24 seeded attempts failed the `duplicateInRun >= 2` filter and it returned the easy fallback, a 12-cell board with a `duplicateInRun` count of **zero**. The lesson teaching No Repeats shipped a board that never needs No Repeats. `earlyLessonsAreBakedNotGenerated` guards the class of regression; `bakedLessonsLoadPromptly` is the loose timing backstop.
+
+Two things to know when authoring a lesson board:
+
+- **`duplicateInRun` does not appear in a from-empty `LogicalSolver` trace.** Its detector needs a digit already placed, and `magicBlock`/`crossReference` reach the same cells first. Judge a No-Repeats board by the trace *after* the scripted entries (`noRepeatExamStaysInsideTheCurriculum` does), not by `techniqueProfile`.
+- Verify uniqueness with the engine before writing any copy around a board — `swiftc -O -o bench Kakuro/Engine/*.swift main.swift`, then `BacktrackingSolver.countSolutions(puzzle, limit: 2).count == 1`. Small boards are very often ambiguous.
+
+Lessons 4–9 still generate. They are all paid, so **the first thing a paying customer opens is the slowest screen in the app** — worth baking next, or at minimum routing through `PuzzleCache` with real progress instead of an indefinite spinner.
+
+`TutorialEngine.advance()` clears `notesMode` when entering `.solveFreely`. Without it, a preceding `.requireNote` step left notes mode on, every digit the player entered in the exam became a note, and the board could never reach `.won` — Cross Reference was uncompletable. `tutorialEngineWalksBakedLesson` covers every baked lesson now; the old test only ever walked the rules lesson, which has no `.solveFreely` step.
+
+## Puzzle delivery: warm one key, await it, never race it
+
+`PuzzleCache` stores **tasks, not finished puzzles** (`entries: [CacheKey: Entry]`, each holding a `Task<GeneratedPuzzle?, Never>`). That is the whole design: a claim on a key that is already generating *awaits that task*. The previous split of `cache` + `inFlight` let `takePuzzle` miss the cache and start a **second** generation while the first ran, so the player waited on the one that started later and the first board was discarded. With one table the race cannot be expressed.
+
+- `warm(size:difficulty:)` — speculative, `.utility`, cancels any **other running unclaimed** entry. At most one speculative generation at a time: nine concurrent ones (the old picker-mash behaviour) starve the cooperative pool and slow the board the player is actually waiting for.
+- `request(size:difficulty:) -> PuzzleRequest` — claims the key, returning the progress stream **and** the handle in one synchronous call. Splitting them puts a suspension point where progress is missed or the entry is rebuilt underneath.
+- **A cancelled entry must be removed from the table.** It resolves to `nil` forever, so leaving it makes every later request for that key hang. Not an optimization — `cancellingDropsTheEntrySoALaterRequestStartsFresh` pins it.
+- **Identity-guard every `entries[key]` write** (`entries[key] === entry`); that is why `Entry` is a `final class`. A late-finishing task must not clobber a fresher entry.
+- Cancellation reaches the generator via `withTaskCancellationHandler` in `PuzzleRequest.puzzle()`. Bind the `Task` to a local first — `onCancel` is `@Sendable` and may run off-main, so it cannot capture the MainActor-isolated `Entry`.
+- `init(generate:)` is the test seam. `PuzzleCacheTests` had to be written from scratch; the absence of any test here is how the double-generation bug shipped.
+
+Warming policy lives in `HomeView`, not `ContentView`: it warms the key the pickers point at, restored from `ProgressStore.lastPlayed`. **`isRestoring` is load-bearing** — assigning `newGameSize` fires the size gate, and at launch `entitlements.isUnlocked` can still be false, so restoring a large board would show a paying customer a paywall on cold launch.
+
+### Generation cost, measured (native -O; debug simulator ≈5×)
+
+| | easy | medium | hard |
+|---|---|---|---|
+| medium | p50 0.16s, p95 1.79s | p50 0.19s, p95 0.84s | p50 0.44s, p95 1.51s |
+| large | **p50 2.38s, max 7.00s** | p50 0.97s, max 3.78s | p50 0.28s, max 1.66s |
+
+**Hard is not slower than medium** — `fill`'s digit ordering only special-cases `.easy`, so `.medium` and `.hard` take byte-identical search paths. **Easy is the expensive band**, and `large/easy` is the worst case in the app. The `.easy` extreme-digit bias is why: removing it makes large/easy ~2× faster with no band-accuracy loss, but makes *medium* slower. It is size-dependent; do not touch it without a calibration run.
+
+## Uniqueness is a runtime guarantee, not a convention
+
+`generate` has exactly one exit, and everything passes `verified(_:size:)`: `countSolutions(limit: 2, nodeLimit: 200_000)` requiring `!aborted && count == 1`, then `LogicalSolver.solve` requiring `.solved`. Measured cost **17ms p50 / 84ms max on large — 0.7% of a 2.4s generation**.
+
+Before this, the budget-exhausted fallback returned a baked grid with **no uniqueness check at all**, and passed `logical.solved` to the rater instead of requiring it — an unsolvable grid would have shipped as a high-scoring "hard" puzzle the hint engine could not teach. `verifiedFallback` now returns the first baked grid that passes.
+
+`search(_:control:rng:)` is the old loop moved **verbatim**. **Never reorder or add an RNG draw there** — band-match rates and the calibrated `DifficultyRater.thresholds` are a pure function of the seeded stream. The check that this held: band-miss counts per (size, difficulty) were identical before and after the extraction.
+
+`KakuroGenerator.Control` carries `isCancelled` and `onProgress`. The probe is explicit rather than a `Task.isCancelled` read inside the Engine, so generation stays independent of task context; callers pass `{ Task.isCancelled }`, which is *evaluated* on the generating task. Probes sit at cold sites only — the outer loop, the repair loop, and `fill`'s recursion gated at `steps & 0x3FF`. **Never probe inside `BacktrackingSolver.candidates(at:)`**; that path is pinned allocation-free at ~1µs/node.
+
 ## Calibration workflow
 
 1. Build a CLI bench (above) that loops `makeTopology` → `fill` → mutate-repair → `LogicalSolver.solve`, collecting `DifficultyRater.score` for 30+ unique+solvable candidates per size
@@ -103,6 +170,7 @@ venv/bin/idb ui tap --udid <udid> <x> <y>             # coordinates are POINTS, 
 
 ## Project Configuration
 
-- Bundle ID: `de.kaikunze.kakuro` · Team: `8H42EZRCCP`
+- App Store name: **Just Kakuro** · Bundle ID: `de.kaikunze.kakuro` · Team: `8H42EZRCCP` · App Store Connect app id `6796701026`, SKU `7778`
+  The ASC record began life as "MathMaze" on `de.kaikunze.mathmaze`; on 2026-07-31 it was renamed and repointed to `de.kaikunze.kakuro` (registered bundle id `C7X5B3UVJ4`). That was only possible because no build had been uploaded yet — **once the first build lands, the bundle ID is locked forever.** The Xcode target is still named `Kakuro`, so the product is `Kakuro.app` with display name "Just Kakuro"
 - iOS 18.0+, iPhone + iPad (`TARGETED_DEVICE_FAMILY = 1,2`), portrait on iPhone, all orientations on iPad
 

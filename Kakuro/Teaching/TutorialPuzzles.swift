@@ -41,6 +41,21 @@ nonisolated enum TutorialPuzzles {
         ])
     }
 
+    /// No-repeat showcase. Every deduction here is a no-repeat kill, and that is
+    /// load-bearing: drop the rule and the board has three solutions.
+    /// 6→ over three cells is {1,2,3} (not 2+2+2); 4↓ is {1,3} (not 2+2);
+    /// the 19→ run rejects both remaining orderings on a repeat (3,8,8 / 1,9,9).
+    ///   .    4↓  11↓ 10↓
+    ///   6→   1   2   3
+    ///  19→   3   9   7
+    static var noRepeatBoard: KakuroPuzzle {
+        KakuroBuilder.puzzle(fromSolutionGrid: [
+            [nil, nil, nil, nil],
+            [nil, 1, 2, 3],
+            [nil, 3, 9, 7],
+        ])
+    }
+
     // MARK: - Lessons
 
     /// Cheap metadata for menus — building a full lesson may generate a board.
@@ -60,14 +75,30 @@ nonisolated enum TutorialPuzzles {
             }
     }
 
+    /// Lessons with a hand-authored board and script. These load instantly;
+    /// everything else pays for a drill search (see `generatedLesson`), so the
+    /// early curriculum must stay on this list. `TutorialFixtureTests` iterates it.
+    static let bakedTechniques: [Technique?] = [nil, .duplicateInRun, .magicBlock, .crossReference]
+
+    /// The hand-authored lesson for a technique, or nil if it has none.
+    @MainActor
+    static func bakedLesson(for technique: Technique?) -> TutorialLesson? {
+        switch technique {
+        case nil: rulesLesson
+        case .duplicateInRun: noRepeatLesson
+        case .magicBlock: magicBlockLesson
+        case .crossReference: crossReferenceLesson
+        default: nil
+        }
+    }
+
     /// Builds the full lesson. May generate a drill board — call off-main.
     @MainActor
     static func lesson(for technique: Technique?) async -> TutorialLesson {
+        if let baked = bakedLesson(for: technique) { return baked }
         switch technique {
-        case nil: return rulesLesson
-        case .magicBlock: return magicBlockLesson
-        case .crossReference: return crossReferenceLesson
         case .some(let technique): return await generatedLesson(for: technique)
+        case nil: return rulesLesson  // unreachable: nil is always baked
         }
     }
 
@@ -93,6 +124,38 @@ nonisolated enum TutorialPuzzles {
                 .requireEntry("The down run needs 3 more. Place the 3.", c, 3),
                 .requireEntry("Last cell: the bottom row must total 8, and 8 − 3 = 5.", d, 5),
                 .celebrate("That's Kakuro: every run adds to its clue, no digit repeats in a run, and crossings decide the order. You just solved your first board."),
+            ]
+        )
+    }
+
+    /// Lesson 2. Sits between the rules lesson (4 cells, every one forced) and
+    /// Magic Blocks (7 cells, 2 forced): 6 cells, 3 forced, then a 3-cell exam.
+    /// After the scripted entries the solver's tail is duplicateInRun ×3 →
+    /// magicBlock ×3 → minMaxBounds → nakedSingle ×3 — nothing past the
+    /// curriculum position this lesson occupies.
+    @MainActor
+    private static var noRepeatLesson: TutorialLesson {
+        let a = GridPosition(row: 1, col: 1)  // 1
+        let b = GridPosition(row: 1, col: 2)  // 2
+        let c = GridPosition(row: 1, col: 3)  // 3
+        let d = GridPosition(row: 2, col: 1)  // 3
+        let e = GridPosition(row: 2, col: 2)  // 9
+        return TutorialLesson(
+            id: "norepeat",
+            technique: .duplicateInRun,
+            title: Technique.duplicateInRun.displayName,
+            summary: "One digit, once per run",
+            puzzle: noRepeatBoard,
+            steps: [
+                .say(TechniqueContent.lesson(for: .duplicateInRun)),
+                .sayHighlighting("Six across, three cells. 2+2+2 makes six — but a digit never repeats inside a run, so the only set left is 1, 2 and 3.", [a, b, c]),
+                .sayHighlighting("Four down has the same trap: not 2+2. It has to be 1 and 3.", [a, d]),
+                .requireEntry("So this cell is 1 or 3. If it were 1, the 19 across would need 18 from two cells — that's 9+9, a repeat. Place the 3.", d, 3),
+                .requireEntry("Four down is settled now: its other cell takes the 1.", a, 1),
+                .sayHighlighting("Place a digit, then sweep both of its runs. The 1 is spent, so the rest of the six across is 2 and 3.", [b, c]),
+                .requireEntry("19 across already has its 3, so the last two cells make 16 — and 8+8 is out, leaving 7 and 9. That forces 11 down to be 2+9, not 3+8. Place the 9.", e, 9),
+                .solveFreely("Three cells left. Each run tells you exactly what's missing — and nothing repeats."),
+                .celebrate("No Repeats does the quiet work: every digit you place is crossed off two runs at once, and every tidy even split — 2+2, 8+8, 2+2+2 — is illegal."),
             ]
         )
     }
@@ -154,7 +217,7 @@ nonisolated enum TutorialPuzzles {
             steps: [
                 .say(TechniqueContent.lesson(for: technique)),
                 .say(TechniqueContent.rule(for: technique)),
-                .solveFreely("Solve this board — it needs \(technique.displayName) at least once. The hint button teaches if you stall."),
+                .solveFreely("Solve this board — it needs \(technique.displayName) at least once. Tap any clue to see which digit sets still fit."),
                 .celebrate("\(technique.displayName) added to your toolkit. Drill it in Practice to make it automatic."),
             ]
         )

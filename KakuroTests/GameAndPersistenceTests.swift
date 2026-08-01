@@ -123,6 +123,19 @@ import Testing
         #expect(reloaded.stats.puzzlesSolved == 1)
     }
 
+    /// The picker restores to the last game started, which is also the key the
+    /// cache warms — so getting this wrong means every first game is cold.
+    @Test func lastPlayedChoiceSurvivesRelaunch() {
+        let defaults = isolatedDefaults()
+        do {
+            let store = ProgressStore(userDefaults: defaults)
+            #expect(store.lastPlayed == nil, "a fresh install has no last-played choice")
+            store.recordLastPlayed(size: .large, difficulty: .hard)
+        }
+        let reloaded = ProgressStore(userDefaults: defaults)
+        #expect(reloaded.lastPlayed == ProgressStore.GameChoice(size: .large, difficulty: .hard))
+    }
+
     /// Resuming has two halves that failed independently: the snapshot must
     /// survive a fresh store (process relaunch), and the in-memory store must
     /// report it immediately so the Continue card appears without a relaunch.

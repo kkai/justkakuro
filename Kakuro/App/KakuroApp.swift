@@ -5,6 +5,8 @@ struct KakuroApp: App {
     @State private var progress: ProgressStore
     @State private var mastery: MasteryTracker
     @State private var cache = PuzzleCache()
+    @State private var entitlements = EntitlementStore()
+    @State private var paywall = PaywallPresenter()
 
     init() {
         let store = ProgressStore()
@@ -18,6 +20,8 @@ struct KakuroApp: App {
                 .environment(progress)
                 .environment(mastery)
                 .environment(cache)
+                .environment(entitlements)
+                .environment(paywall)
                 .onAppear {
                     Haptics.enabled = progress.settings.hapticsEnabled
                 }

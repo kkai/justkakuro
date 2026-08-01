@@ -147,6 +147,11 @@ final class TutorialEngine {
         case .requireNote(_, let pos, _):
             game.notesMode = true
             game.selected = pos
+        case .solveFreely:
+            // A preceding requireNote step leaves notes mode on. Carrying it into
+            // the exam turns every digit the player enters into a note, so the
+            // board can never reach .won — Cross Reference was uncompletable.
+            game.notesMode = false
         default:
             break
         }

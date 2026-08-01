@@ -5,6 +5,8 @@ struct GameView: View {
     let game: KakuroGame
     @Environment(ProgressStore.self) private var progress
     @Environment(MasteryTracker.self) private var mastery
+    @Environment(EntitlementStore.self) private var entitlements
+    @Environment(PaywallPresenter.self) private var paywall
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
 
@@ -69,6 +71,8 @@ struct GameView: View {
                     self.hint = nil
                 } onDismiss: {
                     self.hint = nil
+                } onUnlock: {
+                    paywall.present(.teachingHints)
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 4)
@@ -181,14 +185,25 @@ struct GameView: View {
         progress.saveGame(game.snapshot)
     }
 
+    /// Free players keep the error check ("something here is wrong"); the
+    /// teaching ladder is part of the unlock.
+    private var hintPolicy: HintPolicy {
+        entitlements.isUnlocked ? .full : .errorsOnly
+    }
+
     private func requestHint() {
         hint = hintEngine.hint(for: game, mastery: mastery,
-                               showErrors: progress.settings.showErrors)
+                               showErrors: progress.settings.showErrors,
+                               policy: hintPolicy)
     }
 
     private func advanceHint() {
         guard let current = hint else { return }
-        hint = hintEngine.escalate(current, for: game, mastery: mastery)
+        guard !current.isLocked else {
+            paywall.present(.teachingHints)
+            return
+        }
+        hint = hintEngine.escalate(current, for: game, mastery: mastery, policy: hintPolicy)
     }
 
     private func handleEntriesChange(old: [GridPosition: Int], new: [GridPosition: Int]) {

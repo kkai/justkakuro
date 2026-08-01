@@ -7,6 +7,7 @@ struct TutorialView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var engine: TutorialEngine?
+    @State private var tappedClue: ClueSelection?
 
     var body: some View {
         ZStack {
@@ -33,7 +34,7 @@ struct TutorialView: View {
     private func lessonBody(_ engine: TutorialEngine) -> some View {
         VStack(spacing: 14) {
             BoardView(game: engine.game, highlighted: engine.highlightedCells) { pos in
-                engine.handleTap(pos)
+                handleTap(pos, engine: engine)
             }
             .modifier(WiggleEffect(active: engine.wiggle))
 
@@ -44,6 +45,9 @@ struct TutorialView: View {
             TutorialPadView(engine: engine)
         }
         .padding(16)
+        .sheet(item: $tappedClue) { selection in
+            CombinationSheet(selection: selection) { engine.game.remainingCombinations(for: $0) }
+        }
         .onChange(of: engine.finished) { _, finished in
             if finished {
                 if let technique = engine.lesson.technique {
@@ -51,6 +55,23 @@ struct TutorialView: View {
                 }
                 dismiss()
             }
+        }
+    }
+
+    /// Clue taps open the combination sheet at any point in a lesson — the
+    /// scripts promise it, and `TutorialEngine` would otherwise reject the tap
+    /// with an error haptic. White cells stay under the script's control.
+    private func handleTap(_ pos: GridPosition, engine: TutorialEngine) {
+        switch engine.game.puzzle.cells[pos.row][pos.col] {
+        case .clue:
+            let runs = engine.game.puzzle.runs.filter { $0.clueCell == pos }
+            guard !runs.isEmpty else { return }
+            tappedClue = ClueSelection(position: pos, runs: runs)
+            Haptics.note()
+        case .white:
+            engine.handleTap(pos)
+        case .block:
+            break
         }
     }
 

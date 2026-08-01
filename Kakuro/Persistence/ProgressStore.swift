@@ -13,6 +13,15 @@ final class ProgressStore {
         static let stats = "kakuro.stats.v1"
         static let mastery = "kakuro.mastery.v1"
         static let settings = "kakuro.settings.v1"
+        static let lastPlayed = "kakuro.lastPlayed.v1"
+    }
+
+    /// The size/difficulty the player last started a game with, so the pickers
+    /// come back where they left them and the cache can warm the right key.
+    /// Deliberately not `BestTimeKey` — same shape, different meaning.
+    struct GameChoice: Codable, Hashable {
+        let size: BoardSize
+        let difficulty: Difficulty
     }
 
     struct Settings: Codable, Equatable {
@@ -39,6 +48,7 @@ final class ProgressStore {
     /// on demand so the Continue card appears the moment a game is saved —
     /// reading UserDefaults inside a view body never invalidates it.
     private(set) var savedGame: KakuroGame.Snapshot?
+    private(set) var lastPlayed: GameChoice?
     var settings = Settings() {
         didSet { save(settings, key: Key.settings) }
     }
@@ -49,6 +59,15 @@ final class ProgressStore {
         stats = load(Stats.self, key: Key.stats) ?? Stats()
         settings = load(Settings.self, key: Key.settings) ?? Settings()
         savedGame = load(KakuroGame.Snapshot.self, key: Key.saveGame)
+        lastPlayed = load(GameChoice.self, key: Key.lastPlayed)
+    }
+
+    /// Records the *requested* size/difficulty for a new game.
+    func recordLastPlayed(size: BoardSize, difficulty: Difficulty) {
+        let choice = GameChoice(size: size, difficulty: difficulty)
+        guard choice != lastPlayed else { return }
+        lastPlayed = choice
+        save(choice, key: Key.lastPlayed)
     }
 
     // MARK: - Best times / stats

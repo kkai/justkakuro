@@ -5,6 +5,8 @@ import SwiftUI
 struct LearnMenuView: View {
     @Binding var path: [Route]
     @Environment(MasteryTracker.self) private var mastery
+    @Environment(EntitlementStore.self) private var entitlements
+    @Environment(PaywallPresenter.self) private var paywall
 
     var body: some View {
         ZStack {
@@ -26,45 +28,66 @@ struct LearnMenuView: View {
 
     private func lessonRow(_ info: TutorialPuzzles.LessonInfo) -> some View {
         let state = info.technique.map { mastery.state(of: $0) } ?? .learned
-        let locked = state == .locked
+        // Two different locks. Mastery-locked rows are genuinely unreachable, so
+        // they stay disabled. Paywalled rows stay tappable — a dead row neither
+        // teaches nor sells.
+        let masteryLocked = state == .locked
+        let paywalled = !FeatureGate.isLessonAvailable(info.technique,
+                                                       unlocked: entitlements.isUnlocked)
+        let dimmed = masteryLocked || paywalled
         return Button {
-            path.append(.tutorial(info.technique))
+            if paywalled {
+                paywall.present(.advancedLessons)
+            } else {
+                path.append(.tutorial(info.technique))
+            }
         } label: {
             HStack(spacing: 14) {
-                stateBadge(state, isRules: info.technique == nil)
+                stateBadge(state, isRules: info.technique == nil, paywalled: paywalled)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(info.title)
                         .font(.headline)
-                        .foregroundStyle(locked ? Theme.inkSoft : Theme.ink)
+                        .foregroundStyle(dimmed ? Theme.inkSoft : Theme.ink)
                     Text(info.summary)
                         .font(.footnote)
                         .foregroundStyle(Theme.inkSoft)
                         .lineLimit(2)
                 }
                 Spacer()
-                Image(systemName: locked ? "lock" : "chevron.right")
+                if paywalled {
+                    Text("Unlock")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Theme.indigo)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Capsule().fill(Theme.indigoWash))
+                }
+                Image(systemName: dimmed ? "lock" : "chevron.right")
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(Theme.inkSoft)
+                    .foregroundStyle(paywalled ? Theme.indigo : Theme.inkSoft)
             }
             .padding(14)
             .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.surface))
-            .opacity(locked ? 0.6 : 1)
+            .opacity(dimmed ? 0.6 : 1)
         }
         .buttonStyle(.plain)
-        .disabled(locked)
+        .disabled(masteryLocked)
     }
 
     @ViewBuilder
-    private func stateBadge(_ state: MasteryTracker.MasteryState, isRules: Bool) -> some View {
+    private func stateBadge(_ state: MasteryTracker.MasteryState,
+                            isRules: Bool,
+                            paywalled: Bool) -> some View {
         ZStack {
             Circle()
-                .fill(state == .learned ? Theme.complete.opacity(0.18) : Theme.indigoWash)
+                .fill(state == .learned && !paywalled ? Theme.complete.opacity(0.18) : Theme.indigoWash)
                 .frame(width: 38, height: 38)
-            Image(systemName: isRules ? "book"
+            Image(systemName: paywalled ? "lock.fill"
+                  : isRules ? "book"
                   : state == .learned ? "checkmark"
                   : state == .locked ? "lock" : "circle.dashed")
                 .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(state == .learned ? Theme.complete : Theme.indigo)
+                .foregroundStyle(state == .learned && !paywalled ? Theme.complete : Theme.indigo)
         }
         .accessibilityHidden(true)
     }
@@ -74,6 +97,8 @@ struct LearnMenuView: View {
 struct PracticeMenuView: View {
     @Binding var path: [Route]
     @Environment(MasteryTracker.self) private var mastery
+    @Environment(EntitlementStore.self) private var entitlements
+    @Environment(PaywallPresenter.self) private var paywall
 
     var body: some View {
         ZStack {
@@ -95,46 +120,63 @@ struct PracticeMenuView: View {
 
     private func row(_ technique: Technique) -> some View {
         let record = mastery.record(for: technique)
-        let locked = record.state == .locked
+        let masteryLocked = record.state == .locked
+        // Drills are paid wholesale — mastery progress is itself a paid surface,
+        // so a free player sees neither the bars nor the counts.
+        let paywalled = !entitlements.isUnlocked
+        let dimmed = masteryLocked || paywalled
         return Button {
-            path.append(.practice(technique))
+            if paywalled {
+                paywall.present(.practiceDrills)
+            } else {
+                path.append(.practice(technique))
+            }
         } label: {
             HStack(spacing: 14) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(technique.displayName)
                         .font(.headline)
-                        .foregroundStyle(locked ? Theme.inkSoft : Theme.ink)
-                    Text(statusLine(record))
+                        .foregroundStyle(dimmed ? Theme.inkSoft : Theme.ink)
+                    Text(statusLine(record, paywalled: paywalled))
                         .font(.footnote)
-                        .foregroundStyle(record.state == .learned ? Theme.complete : Theme.inkSoft)
+                        .foregroundStyle(record.state == .learned && !paywalled
+                                         ? Theme.complete : Theme.inkSoft)
                 }
                 Spacer()
-                if record.state == .learned {
+                if paywalled {
+                    Text("Unlock")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Theme.indigo)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Capsule().fill(Theme.indigoWash))
+                } else if record.state == .learned {
                     Image(systemName: "checkmark.seal.fill")
                         .foregroundStyle(Theme.complete)
-                } else if !locked {
+                } else if !masteryLocked {
                     ProgressView(value: Double(min(record.unaidedUses, MasteryTracker.learnedThreshold)),
                                  total: Double(MasteryTracker.learnedThreshold))
                         .frame(width: 60)
                         .tint(Theme.indigo)
                 }
-                Image(systemName: locked ? "lock" : "chevron.right")
+                Image(systemName: dimmed ? "lock" : "chevron.right")
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(Theme.inkSoft)
+                    .foregroundStyle(paywalled ? Theme.indigo : Theme.inkSoft)
             }
             .padding(14)
             .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.surface))
-            .opacity(locked ? 0.6 : 1)
+            .opacity(dimmed ? 0.6 : 1)
         }
         .buttonStyle(.plain)
-        .disabled(locked)
+        .disabled(masteryLocked)
     }
 
-    private func statusLine(_ record: MasteryTracker.Record) -> String {
+    private func statusLine(_ record: MasteryTracker.Record, paywalled: Bool) -> String {
+        if paywalled { return "Included in the full game" }
         switch record.state {
-        case .locked: "Unlocks with the previous technique"
-        case .learned: "Learned · \(record.drillsCompleted) drills"
-        default: "\(record.unaidedUses)/\(MasteryTracker.learnedThreshold) unaided applications"
+        case .locked: return "Unlocks with the previous technique"
+        case .learned: return "Learned · \(record.drillsCompleted) drills"
+        default: return "\(record.unaidedUses)/\(MasteryTracker.learnedThreshold) unaided applications"
         }
     }
 }

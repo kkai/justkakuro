@@ -15,6 +15,18 @@ struct Hint: Sendable, Equatable {
     let highlightCells: [GridPosition]
     /// True when the hint is pointing at a player mistake, not teaching.
     let isErrorHint: Bool
+    /// True when the teaching hint was withheld behind the unlock. The banner
+    /// offers to unlock instead of escalating.
+    var isLocked: Bool = false
+}
+
+/// How much the hint engine is allowed to give away.
+///
+/// `.errorsOnly` is the free tier: it still catches contradictions ("something
+/// here is wrong"), but never names a technique or walks the escalation ladder.
+nonisolated enum HintPolicy: Sendable {
+    case errorsOnly
+    case full
 }
 
 /// Escalating, context-aware hints. Errors first; then the next teachable step
@@ -25,7 +37,8 @@ struct HintEngine {
 
     /// `showErrors` mirrors the setting: when off, hints teach the next step and
     /// never point out contradictions.
-    func hint(for game: KakuroGame, mastery: MasteryTracker, showErrors: Bool = true) -> Hint {
+    func hint(for game: KakuroGame, mastery: MasteryTracker, showErrors: Bool = true,
+              policy: HintPolicy = .full) -> Hint {
         if showErrors, let errorHint = errorHint(for: game, level: .nudge) {
             return errorHint
         }
@@ -35,6 +48,15 @@ struct HintEngine {
                         text: "Everything on the board checks out — keep going.",
                         highlightCells: [], isErrorHint: false)
         }
+        guard policy == .full else {
+            // Withheld, so deliberately *without* recordHint: penalising mastery
+            // for a hint the player never saw would silently damage their
+            // progress path the moment they later pay.
+            return Hint(level: .nudge,
+                        application: step,
+                        text: "There's a move available here. Teaching hints name the technique and show you why — they're part of the full game.",
+                        highlightCells: [], isErrorHint: false, isLocked: true)
+        }
         mastery.recordHint(technique: step.technique, level: .nudge)
         return Hint(level: .nudge,
                     application: step,
@@ -42,7 +64,10 @@ struct HintEngine {
                     highlightCells: [], isErrorHint: false)
     }
 
-    func escalate(_ hint: Hint, for game: KakuroGame, mastery: MasteryTracker) -> Hint {
+    func escalate(_ hint: Hint, for game: KakuroGame, mastery: MasteryTracker,
+                  policy: HintPolicy = .full) -> Hint {
+        // A locked hint never climbs the ladder; the banner offers the unlock.
+        guard policy == .full, !hint.isLocked else { return hint }
         guard hint.level < .resolution else { return hint }
         let next = HintLevel(rawValue: hint.level.rawValue + 1) ?? .resolution
         if hint.isErrorHint {

@@ -5,6 +5,8 @@ import SwiftUI
 struct PracticeView: View {
     let technique: Technique
     @Environment(MasteryTracker.self) private var mastery
+    @Environment(EntitlementStore.self) private var entitlements
+    @Environment(PaywallPresenter.self) private var paywall
     @Environment(\.dismiss) private var dismiss
 
     @State private var game: KakuroGame?
@@ -16,7 +18,9 @@ struct PracticeView: View {
     var body: some View {
         ZStack {
             Theme.paper.ignoresSafeArea()
-            if let game {
+            if !entitlements.isUnlocked {
+                LockedFeatureView(feature: .practiceDrills)
+            } else if let game {
                 drillBody(game)
             } else {
                 VStack(spacing: 12) {
@@ -30,6 +34,9 @@ struct PracticeView: View {
         .navigationTitle(technique.displayName)
         .navigationBarTitleDisplayMode(.inline)
         .task(id: variant) {
+            // Guard before generating: a drill search is expensive, and this
+            // route can be reached with a stale path after a refund.
+            guard entitlements.isUnlocked else { return }
             game = nil
             usedHint = false
             hint = nil
@@ -74,6 +81,8 @@ struct PracticeView: View {
                     self.hint = nil
                 } onDismiss: {
                     self.hint = nil
+                } onUnlock: {
+                    paywall.present(.teachingHints)
                 }
                 .padding(.horizontal, 16)
             }

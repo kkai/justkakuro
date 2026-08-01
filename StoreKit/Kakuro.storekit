@@ -1,0 +1,31 @@
+{
+  "identifier" : "A1F0C9D2",
+  "nonRenewingSubscriptions" : [],
+  "products" : [
+    {
+      "displayPrice" : "4.99",
+      "familyShareable" : true,
+      "internalID" : "7B3E51AC",
+      "localizations" : [
+        {
+          "description" : "Every lesson, every drill, teaching hints, large boards and stats. One purchase, forever.",
+          "displayName" : "Just Kakuro Full",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "de.kaikunze.kakuro.full",
+      "referenceName" : "Just Kakuro Full",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "6796701026",
+    "_developerTeamID" : "8H42EZRCCP",
+    "_lastSynchronizedDate" : 0
+  },
+  "subscriptionGroups" : [],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}
