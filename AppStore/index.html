@@ -3,63 +3,351 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Just Kakuro: Support</title>
+<title>Just Kakuro</title>
+<meta name="description" content="An iPhone and iPad app that teaches you to play Kakuro, the crossword of sums. Try a board here.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-  body { font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
-         max-width: 40rem; margin: 3rem auto; padding: 0 1.25rem;
-         color: #22262b; line-height: 1.6; background: #f2f3ee; }
-  h1 { font-size: 1.8rem; margin-bottom: 0.2rem; font-family: Georgia, serif; }
-  .tagline { color: #6b7280; margin-top: 0; }
-  h2 { font-size: 1.1rem; margin-top: 2rem; }
-  a { color: #3b5ba5; }
-  dt { font-weight: 600; margin-top: 1rem; }
-  dd { margin: 0.25rem 0 0 0; }
-  footer { margin-top: 3rem; font-size: 0.85rem; color: #6b7280; }
+  :root{
+    --paper:#f2f3ee; --surface:#fff; --ink:#22262b; --ink-soft:#6b7280;
+    --block:#2b323f; --indigo:#3b5ba5; --wash:rgba(59,91,165,.13);
+    --done:#48856a; --wrong:#c44338; --line:rgba(34,38,43,.13);
+    --cell:clamp(46px,12vw,64px);
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --paper:#15171b; --surface:#1d2026; --ink:#e9ebe7; --ink-soft:#98a0ac;
+           --block:#0f1216; --indigo:#8aa4e0; --wash:rgba(138,164,224,.16);
+           --done:#6fb894; --wrong:#e0796e; --line:rgba(233,235,231,.15); }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--paper);color:var(--ink);
+       font:400 17px/1.65 "IBM Plex Sans",-apple-system,BlinkMacSystemFont,sans-serif;}
+  .wrap{max-width:54rem;margin:0 auto;padding:0 1.25rem}
+
+  /* Wordmark: the clue-cell diagonal strikes the K, as it does in the app. */
+  .mark{display:inline-flex;align-items:flex-end;font-family:Fraunces,Georgia,serif;
+        font-weight:700;font-size:clamp(2.5rem,8vw,4rem);line-height:1;letter-spacing:-.02em}
+  .mark .k{position:relative}
+  .mark .k::after{content:"";position:absolute;left:-.09em;bottom:-.16em;
+        width:.62em;height:.55em;border-bottom:none;
+        background:linear-gradient(to top right,transparent calc(50% - .022em),
+                   var(--indigo) calc(50% - .022em),var(--indigo) calc(50% + .022em),
+                   transparent calc(50% + .022em));}
+  header{padding:4rem 0 0}
+  .tagline{color:var(--ink-soft);margin:.5rem 0 0;font-size:1.1rem}
+
+  /* The diagonal is the page's structural mark, borrowed from a clue cell. */
+  h2{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:1.45rem;
+     margin:4rem 0 .6rem;display:flex;align-items:center;gap:.6rem}
+  h2::before{content:"";width:.75em;height:.75em;flex:none;
+     background:linear-gradient(to top right,transparent calc(50% - 1px),
+                var(--indigo) calc(50% - 1px),var(--indigo) calc(50% + 1px),
+                transparent calc(50% + 1px));}
+  h3{font-size:1rem;font-weight:600;margin:1.5rem 0 .2rem}
+  p{margin:.7rem 0;max-width:40rem}
+  a{color:var(--indigo)}
+  .lede{font-size:1.15rem;max-width:38rem;margin-top:1.6rem}
+
+  /* ---- the board ---------------------------------------------------- */
+  .play{margin:2.5rem 0 0;padding:1.5rem;background:var(--surface);
+        border:1px solid var(--line);border-radius:18px}
+  .eyebrow{font-size:.76rem;letter-spacing:.13em;text-transform:uppercase;
+           color:var(--ink-soft);font-weight:600;margin:0 0 1rem}
+  .board{display:grid;grid-template-columns:repeat(4,var(--cell));
+         gap:2px;background:var(--line);border:2px solid var(--block);
+         width:max-content;max-width:100%;border-radius:4px;overflow:hidden}
+  .sq{width:var(--cell);height:var(--cell);background:var(--surface);
+      display:flex;align-items:center;justify-content:center;position:relative;
+      font-family:Fraunces,Georgia,serif;font-size:calc(var(--cell)*.5);font-weight:600}
+  .sq.block{background:var(--block)}
+  .sq.clue{background:var(--block);color:#eef0ea}
+  .sq.clue::before{content:"";position:absolute;inset:0;
+      background:linear-gradient(to bottom right,transparent calc(50% - .6px),
+                 rgba(238,240,234,.42) calc(50% - .6px),rgba(238,240,234,.42) calc(50% + .6px),
+                 transparent calc(50% + .6px));}
+  .sq .across,.sq .down{position:absolute;font-size:calc(var(--cell)*.3);font-weight:600;line-height:1}
+  .sq .across{top:9%;right:11%}
+  .sq .down{bottom:9%;left:11%}
+  .sq.white{cursor:pointer;color:var(--ink);transition:background .12s}
+  .sq.white:hover{background:var(--wash)}
+  .sq.white.on{background:var(--wash);box-shadow:inset 0 0 0 2px var(--indigo)}
+  .sq.white:focus-visible{outline:3px solid var(--indigo);outline-offset:-3px}
+  .sq.white.bad{color:var(--wrong)}
+  .board.solved .sq.white{color:var(--done)}
+
+  .pad{display:grid;grid-template-columns:repeat(5,1fr);gap:.4rem;
+       margin:1rem 0 0;max-width:calc(var(--cell)*4 + 6px)}
+  .pad button{font-family:Fraunces,Georgia,serif;font-size:1.15rem;font-weight:600;
+       padding:.55rem 0;background:var(--paper);color:var(--ink);
+       border:1px solid var(--line);border-radius:9px;cursor:pointer}
+  .pad button:hover{background:var(--wash);border-color:var(--indigo)}
+  .pad button:focus-visible{outline:2px solid var(--indigo);outline-offset:2px}
+
+  .status{margin:1.1rem 0 0;min-height:3.2em;font-size:.97rem;color:var(--ink-soft);max-width:34rem}
+  .status strong{color:var(--ink)}
+  .status.win{color:var(--done)}
+  .tools{display:flex;gap:1.2rem;margin:.9rem 0 0;font-size:.9rem}
+  .tools button{background:none;border:0;padding:0;color:var(--indigo);
+       cursor:pointer;font:inherit;text-decoration:underline;text-underline-offset:3px}
+
+  /* ---- rest of page -------------------------------------------------- */
+  .cols{display:grid;gap:.4rem 2.5rem;grid-template-columns:repeat(auto-fit,minmax(14rem,1fr))}
+  ul{padding-left:1.15rem;margin:.4rem 0}
+  li{margin:.25rem 0}
+  .card{background:var(--surface);border:1px solid var(--line);
+        border-radius:14px;padding:1.1rem 1.35rem;max-width:42rem}
+  .card p:first-child{margin-top:0}.card p:last-child{margin-bottom:0}
+  dt{font-weight:600;margin-top:1.15rem}
+  dd{margin:.15rem 0 0;color:var(--ink-soft);max-width:40rem}
+  .shots{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-top:1.2rem}
+  .shots img{width:100%;border-radius:12px;border:1px solid var(--line);display:block}
+  footer{margin:5rem 0 3rem;padding-top:1.4rem;border-top:1px solid var(--line);
+         color:var(--ink-soft);font-size:.9rem}
+  footer a{color:var(--ink-soft)}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
 <body>
+<div class="wrap">
 
-<h1>Just Kakuro</h1>
-<p class="tagline">The crossword of sums.</p>
+<header>
+  <div class="mark">Just&nbsp;<span class="k">Kakuro</span></div>
+  <p class="tagline">The crossword of sums.</p>
+  <p class="lede">Every run of white cells adds up to its clue, and no digit
+  repeats inside a run. That is the whole rulebook. Getting good at it is another
+  matter, which is what the app is for.</p>
+</header>
 
-<p>Kakuro is a crossword with sums instead of words. Each run of white cells adds
-up to its clue, and no digit repeats inside a run. Just Kakuro teaches you the
-techniques experienced solvers use, then gets out of the way.</p>
+<section class="play">
+  <p class="eyebrow">Try one</p>
+  <div class="board" id="board" role="grid" aria-label="Kakuro puzzle, three rows by four columns"></div>
+  <div class="pad" id="pad" aria-label="Digit entry"></div>
+  <p class="status" id="status">Pick a cell, then a digit. Or use arrow keys and type.</p>
+  <div class="tools">
+    <button type="button" id="nudge">Where do I start?</button>
+    <button type="button" id="reset">Clear</button>
+  </div>
+</section>
 
-<h2>Common questions</h2>
+<h2>How the app teaches</h2>
+<p>Nine lessons take you from the rules to the techniques experienced solvers use
+without thinking: magic blocks, cross-referencing, min-max bounds, hidden
+singles, combination logic. The board above is the one from the second lesson.</p>
+<p>When you get stuck in a real game, the hint button names the technique that
+applies and shows you why it works. It will fill the cell in if you insist, but
+that is the last thing it offers rather than the first.</p>
+<p>Practice drills let you rehearse one technique at a time. Mastery counts only
+the deductions you worked out yourself, so the progress path reflects what you
+can do rather than how often you tapped the lightbulb.</p>
+
+<div class="shots">
+  <img src="shots/02-lesson.png" alt="A lesson explaining the no-repeat rule">
+  <img src="shots/03-hint.png" alt="A hint naming the No Repeats technique">
+  <img src="shots/05-stats.png" alt="Best times and the technique mastery path">
+  <img src="shots/01-home.png" alt="The Just Kakuro home screen">
+</div>
+
+<h2>One solution, always</h2>
+<p>This is checked rather than assumed. Before a board reaches you it is proved
+to have exactly one solution and to be finishable by reasoning alone. You are
+never asked to guess, and a board that fails either test is never shown.</p>
+
+<h2>What it costs</h2>
+<div class="cols">
+  <div>
+    <h3>Free</h3>
+    <ul>
+      <li>The rules lesson, No Repeats and Magic Blocks</li>
+      <li>Small and medium boards at every difficulty</li>
+      <li>An error check when something has gone wrong</li>
+    </ul>
+  </div>
+  <div>
+    <h3>One purchase</h3>
+    <ul>
+      <li>Six more lessons</li>
+      <li>Every practice drill</li>
+      <li>Hints that teach instead of just answering</li>
+      <li>Large boards, stats and the technique path</li>
+    </ul>
+  </div>
+</div>
+<p>No ads, no subscription, and none of the timers, energy or coins that puzzle
+apps tend to arrive with. Everything works offline.</p>
+
+<h2 id="privacy">Privacy</h2>
+<div class="card">
+  <p><strong>Just Kakuro does not collect any personal data.</strong> There is no
+  account to create, nothing to log in to, and no analytics or advertising code
+  in the app.</p>
+  <p>Your settings, progress, best times and technique mastery are saved on your
+  device using the system's standard preferences storage. That data never leaves
+  your device, and deleting the app deletes all of it.</p>
+  <p>The one optional purchase is handled entirely by Apple. The app asks Apple
+  whether the purchase has been made and stores only that yes-or-no answer on
+  your device. Payment details are never seen by the app or by me.</p>
+  <p>Apart from that purchase check, the app does not connect to the internet.
+  Puzzles are generated on your device.</p>
+  <p><a href="justkakuro-privacy.html">Read the full privacy policy</a></p>
+</div>
+
+<h2>Support</h2>
 <dl>
-  <dt>Does every puzzle have exactly one solution?</dt>
-  <dd>Yes. Every board is checked before you see it, and every board can be
-      finished by reasoning alone. You are never asked to guess.</dd>
-
-  <dt>What does the one-time purchase include?</dt>
-  <dd>Six more lessons, every practice drill, the hints that name and explain a
-      technique, large boards, and your stats. It is a single purchase, not a
-      subscription.</dd>
-
   <dt>I bought it and it is asking me to buy again.</dt>
-  <dd>Open Settings inside the app and tap Restore purchases. That asks the App
-      Store to confirm your purchase on this device. Make sure you are signed in
-      with the Apple Account you bought it with.</dd>
-
+  <dd>Open Settings inside the app and tap Restore purchases. Make sure you are
+      signed in with the Apple Account you bought it with.</dd>
   <dt>Does it work offline?</dt>
   <dd>Yes. Puzzles are generated on your device. The only time the app needs a
       connection is to check or restore a purchase.</dd>
-
   <dt>Where is my progress kept?</dt>
-  <dd>On your device. Nothing is uploaded anywhere. Deleting the app deletes your
-      progress with it.</dd>
+  <dd>On your device, and nowhere else. Deleting the app deletes it too.</dd>
+  <dt>A board looks unsolvable.</dt>
+  <dd>Please tell me, and mention the size and difficulty. Every board is machine
+      checked before it ships, so a counterexample is worth having.</dd>
 </dl>
-
-<h2>Get in touch</h2>
-<p>Bug reports, puzzles that look wrong, and suggestions are all welcome at
-<a href="mailto:kai.kunze@gmail.com">kai.kunze@gmail.com</a>. If a board looks
-unsolvable, mentioning the size and difficulty helps a lot.</p>
+<p>Bug reports and suggestions go to
+<a href="mailto:kai.kunze@gmail.com">kai.kunze@gmail.com</a>.</p>
 
 <footer>
-  <a href="justkakuro-privacy.html">Privacy Policy</a> &middot;
-  <a href="https://kaikunze.de/">kaikunze.de</a>
+  Just Kakuro by <a href="https://kaikunze.de/">Kai Kunze</a> &middot;
+  <a href="justkakuro-privacy.html">Privacy</a> &middot;
+  <a href="https://github.com/kkai/justkakuro">Source on GitHub</a>
 </footer>
 
+</div>
+
+<script>
+(function(){
+  "use strict";
+  // Lesson two's board, the same grid the app ships. Verified to have exactly
+  // one solution: 6 across three cells can only be {1,2,3}, and the two
+  // orderings that survive the down clues both repeat a digit in the 19 run.
+  var SOL = {"1,1":1,"1,2":2,"1,3":3,"2,1":3,"2,2":9,"2,3":7};
+  var CLUES = {
+    "0,1":{down:4}, "0,2":{down:11}, "0,3":{down:10},
+    "1,0":{across:6}, "2,0":{across:19}
+  };
+  var RUNS = [
+    {cells:["1,1","1,2","1,3"], sum:6},  {cells:["2,1","2,2","2,3"], sum:19},
+    {cells:["1,1","2,1"], sum:4},        {cells:["1,2","2,2"], sum:11},
+    {cells:["1,3","2,3"], sum:10}
+  ];
+  var board = document.getElementById("board"),
+      pad = document.getElementById("pad"),
+      status = document.getElementById("status"),
+      entries = {}, sel = null, solved = false;
+
+  var order = [];
+  for (var r=0;r<3;r++) for (var c=0;c<4;c++) {
+    var key=r+","+c, el=document.createElement("div");
+    if (SOL[key]) {
+      el.className="sq white"; el.tabIndex=0; el.dataset.key=key;
+      el.setAttribute("role","gridcell");
+      el.setAttribute("aria-label","row "+r+" column "+c+", empty");
+      el.addEventListener("click", function(){ select(this.dataset.key); });
+      el.addEventListener("keydown", onKey);
+      order.push(key);
+    } else if (CLUES[key]) {
+      el.className="sq clue";
+      var q=CLUES[key];
+      if (q.across) el.innerHTML+='<span class="across">'+q.across+'</span>';
+      if (q.down)   el.innerHTML+='<span class="down">'+q.down+'</span>';
+      el.setAttribute("aria-label",
+        (q.across?"across sum "+q.across+". ":"")+(q.down?"down sum "+q.down:""));
+    } else { el.className="sq block"; }
+    board.appendChild(el);
+  }
+
+  for (var d=1;d<=9;d++) addKey(String(d), d);
+  addKey("⌫", 0);
+  function addKey(label, digit){
+    var b=document.createElement("button");
+    b.type="button"; b.textContent=label;
+    b.setAttribute("aria-label", digit? "Enter "+digit : "Erase");
+    b.addEventListener("click", function(){ enter(digit); });
+    pad.appendChild(b);
+  }
+
+  function cell(key){ return board.querySelector('[data-key="'+key+'"]'); }
+  function select(key){
+    if (solved) return;
+    // Always select. Entering a digit advances the cursor, so a toggle here
+    // would clear the selection the moment you click the cell it moved to.
+    sel = key;
+    order.forEach(function(k){ cell(k).classList.toggle("on", k===sel); });
+    cell(sel).focus();
+  }
+  function enter(digit){
+    if (!sel || solved) return;
+    if (digit) entries[sel]=digit; else delete entries[sel];
+    paint();
+    var i=order.indexOf(sel);
+    if (digit && i>-1 && i<order.length-1) select(order[i+1]);
+  }
+  function onKey(e){
+    var i=order.indexOf(this.dataset.key);
+    if (e.key>="1" && e.key<="9"){ select(this.dataset.key); enter(+e.key); e.preventDefault(); }
+    else if (e.key==="Backspace"||e.key==="Delete"){ select(this.dataset.key); enter(0); e.preventDefault(); }
+    else if (e.key==="ArrowRight"||e.key==="ArrowDown"){ select(order[Math.min(i+1,order.length-1)]); e.preventDefault(); }
+    else if (e.key==="ArrowLeft"||e.key==="ArrowUp"){ select(order[Math.max(i-1,0)]); e.preventDefault(); }
+  }
+
+  function paint(){
+    var bad = {};
+    RUNS.forEach(function(run){
+      var seen={}, total=0, filled=0;
+      run.cells.forEach(function(k){
+        var v=entries[k];
+        if (!v) return;
+        filled++; total+=v;
+        if (seen[v]) { bad[k]=1; bad[seen[v]]=1; }   // a repeat inside the run
+        seen[v]=k;
+      });
+      if (filled===run.cells.length && total!==run.sum) run.cells.forEach(function(k){ bad[k]=1; });
+      if (total>run.sum) run.cells.forEach(function(k){ if(entries[k]) bad[k]=1; });
+    });
+    order.forEach(function(k){
+      var el=cell(k), v=entries[k];
+      el.textContent = v || "";
+      el.classList.toggle("bad", !!bad[k]);
+      var p=k.split(",");
+      el.setAttribute("aria-label","row "+p[0]+" column "+p[1]+", "+(v? v : "empty"));
+      if (k===sel) el.classList.add("on");
+    });
+    var done = order.every(function(k){ return entries[k]===SOL[k]; });
+    if (done && !solved) win();
+    else if (!done) {
+      var n=Object.keys(entries).length;
+      status.className="status";
+      status.textContent = Object.keys(bad).length
+        ? "Something in a highlighted run does not work yet. A run adds to its clue, and no digit repeats inside it."
+        : (n===0 ? "Pick a cell, then a digit. Or use arrow keys and type."
+                 : n+" of 6 placed.");
+    }
+  }
+  function win(){
+    solved=true; sel=null;
+    board.classList.add("solved");
+    order.forEach(function(k){ cell(k).classList.remove("on"); });
+    status.className="status win";
+    status.innerHTML="<strong>Solved.</strong> Every step there was the no-repeat rule doing the work. That is the second lesson in the app, and there are eight more.";
+  }
+
+  document.getElementById("nudge").addEventListener("click", function(){
+    if (solved) return;
+    status.className="status";
+    status.innerHTML="Start with <strong>6 across</strong>. Three different digits adding to six can only be 1, 2 and 3, because 2+2+2 repeats. Now look at <strong>4 down</strong>: not 2+2 either, so it is 1 and 3.";
+  });
+  document.getElementById("reset").addEventListener("click", function(){
+    entries={}; sel=null; solved=false;
+    board.classList.remove("solved");
+    order.forEach(function(k){ cell(k).classList.remove("bad","on"); });
+    paint();
+  });
+  paint();
+})();
+</script>
 </body>
 </html>
