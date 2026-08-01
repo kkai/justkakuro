@@ -38,3 +38,40 @@ Screenshots of the paid tier need the unlock, which a simulator cannot buy. The
 app accepts `-KakuroScreenshotUnlock` for that, wrapped in `#if DEBUG` so it
 cannot exist in a shipped build (`ReleaseBuildTests`, plus a `strings` check on
 a Release binary).
+
+## Build upload
+
+`~/.appstoreconnect/private_keys/AuthKey_49X742Y226.p8` is where `altool` looks
+for the API key. With it in place the whole path is non-interactive:
+
+    xcodebuild archive -project Kakuro.xcodeproj -scheme Kakuro \
+      -configuration Release -destination 'generic/platform=iOS' \
+      -archivePath build/JustKakuro.xcarchive -allowProvisioningUpdates \
+      -authenticationKeyPath <p8> -authenticationKeyID 49X742Y226 \
+      -authenticationKeyIssuerID <issuer>
+
+    xcodebuild -exportArchive -archivePath ... -exportOptionsPlist ExportOptions.plist \
+      -allowProvisioningUpdates -authenticationKey...
+
+    xcrun altool --validate-app -f Kakuro.ipa -t ios --apiKey ... --apiIssuer ...
+    xcrun altool --upload-app   -f Kakuro.ipa -t ios --apiKey ... --apiIssuer ...
+
+Note the archive step signs with the *development* identity; distribution
+signing is applied at export. Passing the authentication key to both steps lets
+Xcode create the App Store provisioning profile and use a Cloud Managed
+distribution certificate without a human, which matters because no distribution
+certificate is present in this machine's keychain.
+
+Always run `--validate-app` first. It catches icon, version and entitlement
+problems without consuming an upload.
+
+## In-app purchase image
+
+`iap/generate.py` draws `iap/just-kakuro-full.png` (1024x1024, RGB, no alpha):
+lesson two's board, solved. Upload it against the IAP's `images` relationship:
+
+    POST /v1/inAppPurchaseImages
+
+The relationship is named `inAppPurchase`, not `inAppPurchaseV2`, even though
+the IAP itself is read from the `/v2/` endpoints. Its readiness shows up as
+`state`, not `assetDeliveryState`; `PREPARE_FOR_SUBMISSION` is the healthy value.
