@@ -67,8 +67,11 @@
       font-family:Fraunces,Georgia,serif;font-size:calc(var(--cell)*.52);font-weight:600}
   .sq.block{background:var(--block)}
   .sq.clue{background:var(--block);color:#eef0ea}
+  /* A gradient's bands run perpendicular to its axis, so "to top right" is what
+     paints a top-left to bottom-right rule. "to bottom right" paints the mirror
+     image, which puts the across and down clues on the wrong sides of it. */
   .sq.clue::before{content:"";position:absolute;inset:0;
-      background:linear-gradient(to bottom right,transparent calc(50% - .5px),
+      background:linear-gradient(to top right,transparent calc(50% - .5px),
                  rgba(238,240,234,.26) calc(50% - .5px),rgba(238,240,234,.26) calc(50% + .5px),
                  transparent calc(50% + .5px));}
   /* Tucked hard into their own triangles: a clue crowding the divider reads
