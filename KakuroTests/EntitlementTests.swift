@@ -72,8 +72,12 @@ import Testing
         #expect(!defaults.bool(forKey: "kakuro.entitlement.v1"))
     }
 
-    /// The airplane-mode regression: an indeterminate answer must never
-    /// downgrade somebody who paid.
+    /// An indeterminate answer must never downgrade somebody who paid.
+    ///
+    /// This used to be reassuring and hollow: it exercised the stub, while the
+    /// production source had no `nil` return at all, so the guard it protects
+    /// was dead code on a real device. `productionSourceCanReportIndeterminate`
+    /// below is the half that keeps it honest.
     @MainActor
     @Test func indeterminateAnswerKeepsTheCachedUnlock() async {
         let defaults = scratchDefaults("offline")
@@ -81,8 +85,25 @@ import Testing
         let store = EntitlementStore(userDefaults: defaults,
                                      source: PreviewEntitlementSource(owned: nil))
         await store.refresh()
-        #expect(store.isUnlocked, "an offline store must not revoke the unlock")
+        #expect(store.isUnlocked, "an indeterminate answer must not revoke the unlock")
         #expect(defaults.bool(forKey: "kakuro.entitlement.v1"))
+    }
+
+    /// The shipping source must be able to produce the `nil` the contract
+    /// promises. A source that can only ever answer true or false makes the
+    /// test above a fiction, which is exactly what shipped in build 1.
+    @Test func productionSourceCanReportIndeterminate() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appending(path: "Kakuro/Store/EntitlementStore.swift"),
+            encoding: .utf8)
+        guard let body = source.range(of: "struct StoreKitEntitlementSource") else {
+            Issue.record("could not find the production source"); return
+        }
+        let production = String(source[body.lowerBound...])
+        #expect(production.contains("return nil"),
+                "StoreKitEntitlementSource.isOwned has no nil path, so the never-downgrade contract cannot hold on a device")
     }
 
     @MainActor

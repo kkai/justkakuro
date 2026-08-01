@@ -6,7 +6,6 @@ struct PaywallView: View {
     let context: PaywallContext
 
     @Environment(EntitlementStore.self) private var entitlements
-    @Environment(PaywallPresenter.self) private var paywall
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -22,7 +21,11 @@ struct PaywallView: View {
         }
         .background(Theme.paper)
         .presentationBackground(Theme.paper)
-        .task { await entitlements.loadProduct() }
+        .task {
+            // A failure raised on another screen must not greet the player here.
+            entitlements.clearTransientState()
+            await entitlements.loadProduct()
+        }
         .onChange(of: entitlements.isUnlocked) { _, unlocked in
             if unlocked { dismiss() }
         }
@@ -84,26 +87,57 @@ struct PaywallView: View {
                 .foregroundStyle(.white)
             }
             .buttonStyle(.plain)
-            .disabled(entitlements.purchaseState == .purchasing)
+            // Both controls key off the same flag, so a purchase and a restore
+            // can never be started on top of each other.
+            .disabled(entitlements.purchaseState.isBusy)
 
             Text("One purchase. No subscription, no ads.")
                 .font(.footnote)
                 .foregroundStyle(Theme.inkSoft)
 
-            Button("Restore purchases") {
+            Button {
                 Task { await entitlements.restore() }
+            } label: {
+                HStack(spacing: 6) {
+                    if entitlements.purchaseState == .restoring {
+                        ProgressView().controlSize(.small)
+                    }
+                    Text(entitlements.purchaseState == .restoring
+                         ? "Checking with the App Store…" : "Restore purchases")
+                }
+                .font(.footnote)
+                .foregroundStyle(Theme.indigo)
             }
-            .font(.footnote)
-            .tint(Theme.indigo)
-            .disabled(entitlements.purchaseState == .restoring)
+            .buttonStyle(.plain)
+            .disabled(entitlements.purchaseState.isBusy)
 
-            if case .failed(let message) = entitlements.purchaseState {
-                Text(message)
-                    .font(.footnote)
-                    .foregroundStyle(Theme.error)
-                    .multilineTextAlignment(.center)
-            }
+            statusLine
         }
+    }
+
+    /// One place for everything the store has to say, so a waiting state, a
+    /// neutral note and a failure cannot each invent their own layout.
+    @ViewBuilder
+    private var statusLine: some View {
+        switch entitlements.purchaseState {
+        case .awaitingApproval:
+            message("Sent for approval. The full game unlocks by itself once it is approved, "
+                    + "and you can keep playing in the meantime.", color: Theme.ink)
+        case .note(let text):
+            message(text, color: Theme.inkSoft)
+        case .failed(let text):
+            message(text, color: Theme.error)
+        default:
+            EmptyView()
+        }
+    }
+
+    private func message(_ text: String, color: Color) -> some View {
+        Text(text)
+            .font(.footnote)
+            .foregroundStyle(color)
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
     }
 }
 

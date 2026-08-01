@@ -182,9 +182,12 @@ struct SettingsView: View {
         }
     }
 
+    /// Says which of restoring, restored, found-nothing and failed happened.
+    /// Silence after a restore is indistinguishable from a broken button.
     private var restoreSubtitle: String {
         switch entitlements.purchaseState {
         case .restoring: "Checking with the App Store…"
+        case .note(let message): message
         case .failed(let message): message
         default: entitlements.isUnlocked
             ? "The full game is unlocked on this Apple Account"
