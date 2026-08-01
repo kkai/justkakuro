@@ -190,6 +190,21 @@ searched. Everything else uses `Options.accepts`, a predicate checked against th
 solve histogram inside the search, which replaced 24 generate-and-discard rounds
 with one filtered search (measured 0.004–0.115s, from up to 1.23s).
 
+## The privacy manifest must contain no comments
+
+`Kakuro/PrivacyInfo.xcprivacy` declares one required-reason API: `UserDefaults`
+under reason `CA92.1`, meaning the app reads and writes only its own defaults and
+nothing leaves the device. `ProgressStore` keeps settings, stats, best times,
+mastery and the saved game; `EntitlementStore` caches the purchase flag so a
+paying customer does not see locks on the first frame after launch.
+
+That explanation lives here rather than in the file. Build 2 shipped with an XML
+comment inside the `NSPrivacyAccessedAPIReasons` array and was rejected with
+**ITMS-91056, invalid privacy manifest**. Neither `plutil -lint` nor
+`altool --validate-app` catches it: the manifest is valid property list, and
+Apple's privacy-manifest validator runs later during processing. Keep the file to
+documented keys and string values only.
+
 ## Statistics invariants
 
 - **Background = paused.** `GameView` pauses on `scenePhase` leaving `.active`.
