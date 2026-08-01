@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Just Kakuro</title>
+<meta name="description" content="An iPhone and iPad app that teaches you to play Kakuro, the crossword of sums, then gets out of the way.">
+<style>
+  :root {
+    --paper:#f2f3ee; --surface:#ffffff; --ink:#22262b; --ink-soft:#6b7280;
+    --indigo:#3b5ba5; --block:#2b323f; --hairline:rgba(34,38,43,.14);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --paper:#16181c; --surface:#1e2127; --ink:#e8eae6; --ink-soft:#9aa1ad;
+            --indigo:#7d97d8; --hairline:rgba(232,234,230,.16); }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--paper); color:var(--ink); line-height:1.65;
+         font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+  .wrap { max-width:56rem; margin:0 auto; padding:0 1.25rem; }
+  header { padding:4.5rem 0 2.5rem; }
+  h1 { font-family:Georgia,"Times New Roman",serif; font-size:clamp(2.4rem,7vw,3.6rem);
+       margin:0; letter-spacing:-.01em; }
+  .tagline { color:var(--ink-soft); font-size:1.15rem; margin:.4rem 0 0; }
+  .lede { font-size:1.1rem; max-width:38rem; margin:1.8rem 0 0; }
+  h2 { font-family:Georgia,serif; font-size:1.5rem; margin:3.5rem 0 .75rem; }
+  h3 { font-size:1.02rem; margin:1.6rem 0 .3rem; }
+  p { margin:.75rem 0; max-width:40rem; }
+  a { color:var(--indigo); }
+  .shots { display:grid; gap:1.25rem; margin:2rem 0 0;
+           grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); }
+  .shot img { width:100%; height:auto; border-radius:14px; border:1px solid var(--hairline);
+              display:block; background:var(--surface); }
+  .shot figcaption { color:var(--ink-soft); font-size:.88rem; margin-top:.55rem; }
+  .card { background:var(--surface); border:1px solid var(--hairline); border-radius:14px;
+          padding:1.1rem 1.3rem; margin:1rem 0; }
+  .card p:first-child { margin-top:0; } .card p:last-child { margin-bottom:0; }
+  dt { font-weight:600; margin-top:1.1rem; }
+  dd { margin:.2rem 0 0; color:var(--ink-soft); max-width:40rem; }
+  .split { display:grid; gap:1rem 2.5rem; grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));
+           margin-top:1rem; }
+  ul { max-width:40rem; padding-left:1.15rem; }
+  li { margin:.3rem 0; }
+  footer { margin:5rem 0 3rem; padding-top:1.5rem; border-top:1px solid var(--hairline);
+           color:var(--ink-soft); font-size:.9rem; }
+  footer a { color:var(--ink-soft); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Just Kakuro</h1>
+  <p class="tagline">The crossword of sums.</p>
+  <p class="lede">Kakuro is a crossword with sums instead of words. Every run of
+  white cells adds up to its clue, and no digit repeats inside a run. That is the
+  whole rulebook. Getting good at it is another matter, which is what this app is
+  for.</p>
+</header>
+
+<section class="shots">
+  <figure class="shot"><img src="shots/01-home.png" alt="The Just Kakuro home screen">
+    <figcaption>Pick a size and a difficulty, or carry on with the board you left.</figcaption></figure>
+  <figure class="shot"><img src="shots/02-lesson.png" alt="A lesson explaining the no-repeat rule">
+    <figcaption>Nine lessons, each on a board where the technique is the way through.</figcaption></figure>
+  <figure class="shot"><img src="shots/03-hint.png" alt="A hint naming the No Repeats technique">
+    <figcaption>Hints name the technique and say why it applies here.</figcaption></figure>
+  <figure class="shot"><img src="shots/05-stats.png" alt="Best times and the technique mastery path">
+    <figcaption>Mastery counts the deductions you worked out yourself.</figcaption></figure>
+</section>
+
+<h2>How it teaches</h2>
+<p>Nine lessons take you from the rules to the techniques experienced solvers use
+without thinking: magic blocks, cross-referencing, min-max bounds, hidden
+singles, combination logic.</p>
+<p>When you get stuck in a real game, the hint button names the technique that
+applies and shows you why it works. It will fill the cell in if you insist, but
+that is the last thing it offers rather than the first.</p>
+<p>Practice drills let you rehearse one technique at a time. Mastery counts only
+the deductions you worked out yourself, so the progress path reflects what you
+can actually do rather than how often you tapped the lightbulb.</p>
+
+<h2>Every puzzle has exactly one solution</h2>
+<p>This is checked rather than assumed. Before a board reaches you it is proved
+to have a single solution and to be finishable by reasoning alone. You are never
+asked to guess, and a puzzle that fails either test is never shown.</p>
+
+<h2>What it costs</h2>
+<div class="split">
+  <div>
+    <h3>Free</h3>
+    <ul>
+      <li>The rules lesson, No Repeats and Magic Blocks</li>
+      <li>Small and medium boards at every difficulty</li>
+      <li>An error check when something has gone wrong</li>
+    </ul>
+  </div>
+  <div>
+    <h3>One purchase</h3>
+    <ul>
+      <li>Six more lessons</li>
+      <li>Every practice drill</li>
+      <li>Hints that teach instead of just answering</li>
+      <li>Large boards, stats and the technique path</li>
+    </ul>
+  </div>
+</div>
+<p>No ads, no subscription, and none of the timers, energy or coins that puzzle
+apps tend to arrive with. Everything works offline.</p>
+
+<h2 id="privacy">Privacy</h2>
+<div class="card">
+  <p><strong>Just Kakuro does not collect any personal data.</strong> There is no
+  account to create, nothing to log in to, and no analytics or advertising code
+  in the app.</p>
+  <p>Your settings, progress, best times and technique mastery are saved on your
+  device using the system's standard preferences storage. That data never leaves
+  your device, and deleting the app deletes all of it.</p>
+  <p>The one optional purchase is handled entirely by Apple. The app asks Apple
+  whether the purchase has been made and stores only that yes-or-no answer on
+  your device. Payment details are never seen by the app or by me.</p>
+  <p>Apart from that purchase check, the app does not connect to the internet.
+  Puzzles are generated on your device.</p>
+  <p><a href="justkakuro-privacy.html">Read the full privacy policy</a></p>
+</div>
+
+<h2>Support</h2>
+<dl>
+  <dt>I bought it and it is asking me to buy again.</dt>
+  <dd>Open Settings inside the app and tap Restore purchases. Make sure you are
+      signed in with the Apple Account you bought it with.</dd>
+
+  <dt>Does it work offline?</dt>
+  <dd>Yes. Puzzles are generated on your device. The only time the app needs a
+      connection is to check or restore a purchase.</dd>
+
+  <dt>Where is my progress kept?</dt>
+  <dd>On your device, and nowhere else. Deleting the app deletes it too.</dd>
+
+  <dt>A board looks unsolvable.</dt>
+  <dd>Please tell me, and mention the size and difficulty. Every board is machine
+      checked before it ships, so a counterexample is worth having.</dd>
+</dl>
+<p>Bug reports and suggestions go to
+<a href="mailto:kai.kunze@gmail.com">kai.kunze@gmail.com</a>.</p>
+
+<footer>
+  Just Kakuro by <a href="https://kaikunze.de/">Kai Kunze</a> &middot;
+  <a href="justkakuro-privacy.html">Privacy</a> &middot;
+  <a href="https://github.com/kkai/justkakuro">Source on GitHub</a>
+</footer>
+
+</div>
+</body>
+</html>
