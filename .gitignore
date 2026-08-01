@@ -5,3 +5,4 @@ xcuserdata/
 *.xcworkspace/xcuserdata/
 venv/
 *.xcresult
+.claude/
