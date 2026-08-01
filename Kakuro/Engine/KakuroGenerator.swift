@@ -9,11 +9,24 @@ nonisolated enum KakuroGenerator {
         var size: BoardSize
         var difficulty: Difficulty
         var seed: UInt64
+        /// Extra condition a candidate must satisfy, checked against its solve
+        /// histogram. Used by practice drills to ask for a board that actually
+        /// exercises a given technique.
+        ///
+        /// The search already computes this histogram to grade difficulty, so
+        /// filtering here scans candidates once instead of running the whole
+        /// generator repeatedly and discarding the results. Evaluating it draws
+        /// no randomness, so a default-accept caller sees the identical seeded
+        /// stream and the identical board.
+        var accepts: (@Sendable ([Technique: Int]) -> Bool)?
 
-        init(size: BoardSize, difficulty: Difficulty, seed: UInt64 = UInt64.random(in: 0...UInt64.max)) {
+        init(size: BoardSize, difficulty: Difficulty,
+             seed: UInt64 = UInt64.random(in: 0...UInt64.max),
+             accepts: (@Sendable ([Technique: Int]) -> Bool)? = nil) {
             self.size = size
             self.difficulty = difficulty
             self.seed = seed
+            self.accepts = accepts
         }
     }
 
@@ -86,6 +99,7 @@ nonisolated enum KakuroGenerator {
                                rng: inout SeededRandomNumberGenerator) -> KakuroPuzzle? {
         var best: (puzzle: KakuroPuzzle, distance: Int)? = nil
         var candidatesSeen = 0
+        var rejected = 0
         let budget = nodeBudget(for: options.size)
         var nodesRemaining = budget
         var topologiesBuilt = 0
@@ -139,6 +153,17 @@ nonisolated enum KakuroGenerator {
                 // Hint guarantee: every shipped puzzle is fully solvable by
                 // curriculum techniques.
                 guard logical.solved else { continue }
+
+                // A caller-supplied condition (drills asking for a board that
+                // uses a particular technique). Rejected candidates are not
+                // band candidates either, so they do not consume the band
+                // budget — but they are counted, so an unsatisfiable request
+                // gives up instead of grinding to the node limit.
+                if let accepts = options.accepts, !accepts(logical.histogram) {
+                    rejected += 1
+                    if rejected >= maxCandidates(for: options.size) * 3 { return best?.puzzle }
+                    continue
+                }
 
                 let score = DifficultyRater.score(profile: logical.histogram, solved: true)
                 let band = DifficultyRater.band(forScore: score, size: options.size)

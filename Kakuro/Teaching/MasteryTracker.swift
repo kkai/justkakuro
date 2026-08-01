@@ -70,8 +70,15 @@ final class MasteryTracker {
     }
 
     /// The player made an entry; if it matches the step the solver was about to
-    /// take, that counts as an unaided application of the technique.
-    func recordEntry(position: GridPosition, digit: Int, game: KakuroGame) {
+    /// take, that counts as an application of the technique.
+    ///
+    /// `unaided` is the caller's to declare, not something this can infer: a
+    /// digit placed by tapping Apply on a hint is indistinguishable here from
+    /// one the player worked out. Passing it wrongly is how a technique reaches
+    /// "Learned" for somebody who never applied it themselves.
+    func recordEntry(position: GridPosition, digit: Int, game: KakuroGame,
+                     unaided: Bool = true) {
+        guard unaided else { return }
         guard game.puzzle.solution(at: position) == digit,
               let previous = game.boardBeforeLastMove,
               previous.entry(at: position) == nil

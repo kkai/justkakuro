@@ -45,7 +45,7 @@ struct HintEngine {
         guard let step = LogicalSolver.nextStep(puzzle: game.puzzle, board: game.board) else {
             return Hint(level: .nudge,
                         application: TechniqueApplication(technique: .duplicateInRun),
-                        text: "Everything on the board checks out — keep going.",
+                        text: "Everything on the board checks out. Keep going.",
                         highlightCells: [], isErrorHint: false)
         }
         guard policy == .full else {
@@ -54,7 +54,7 @@ struct HintEngine {
             // progress path the moment they later pay.
             return Hint(level: .nudge,
                         application: step,
-                        text: "There's a move available here. Teaching hints name the technique and show you why — they're part of the full game.",
+                        text: "There's a move available here. Teaching hints name the technique and show you why. They're part of the full game.",
                         highlightCells: [], isErrorHint: false, isLocked: true)
         }
         mastery.recordHint(technique: step.technique, level: .nudge)
@@ -114,7 +114,7 @@ struct HintEngine {
         case .highlight:
             text = "One of these cells doesn't match its clues. Re-check each run's sum."
         case .resolution:
-            text = "This cell is wrong — clear it and rework the run from its combinations."
+            text = "This cell is wrong. Clear it and rework the run from its combinations."
         }
         return Hint(level: max(level, .highlight) == level ? level : level,
                     application: application,

@@ -116,10 +116,10 @@ nonisolated enum TutorialPuzzles {
             puzzle: rulesBoard,
             steps: [
                 .say("Kakuro is a crossword with sums instead of words. Each white cell takes a digit from 1 to 9."),
-                .sayHighlighting("A row or column of white cells is a run. The clue in the split cell is the run's total — top-right for across, bottom-left for down.", [a, b, c, d]),
+                .sayHighlighting("A row or column of white cells is a run. The clue in the split cell is the run's total: top-right for across, bottom-left for down.", [a, b, c, d]),
                 .sayHighlighting("This across run must add to 3. Two different digits that sum to 3: only 1 and 2. A digit never repeats inside a run.", [a, b]),
-                .sayHighlighting("Which order? The down clue decides. This column adds to 4 — so its two digits are 1 and 3. The shared cell must work for both.", [a, c]),
-                .requireEntry("The shared cell appears in both {1,2} and {1,3} — it must be 1. Tap the pad to place it.", a, 1),
+                .sayHighlighting("Which order? The down clue decides. This column adds to 4, so its two digits are 1 and 3. The shared cell must work for both.", [a, c]),
+                .requireEntry("The shared cell appears in both {1,2} and {1,3}, so it must be 1. Tap the pad to place it.", a, 1),
                 .requireEntry("With 1 placed, the across run needs 2 more. Place the 2.", b, 2),
                 .requireEntry("The down run needs 3 more. Place the 3.", c, 3),
                 .requireEntry("Last cell: the bottom row must total 8, and 8 − 3 = 5.", d, 5),
@@ -148,14 +148,14 @@ nonisolated enum TutorialPuzzles {
             puzzle: noRepeatBoard,
             steps: [
                 .say(TechniqueContent.lesson(for: .duplicateInRun)),
-                .sayHighlighting("Six across, three cells. 2+2+2 makes six — but a digit never repeats inside a run, so the only set left is 1, 2 and 3.", [a, b, c]),
+                .sayHighlighting("Six across, three cells. 2+2+2 makes six, but a digit never repeats inside a run, so the only set left is 1, 2 and 3.", [a, b, c]),
                 .sayHighlighting("Four down has the same trap: not 2+2. It has to be 1 and 3.", [a, d]),
-                .requireEntry("So this cell is 1 or 3. If it were 1, the 19 across would need 18 from two cells — that's 9+9, a repeat. Place the 3.", d, 3),
+                .requireEntry("So this cell is 1 or 3. If it were 1, the 19 across would need 18 from two cells, and that's 9+9, a repeat. Place the 3.", d, 3),
                 .requireEntry("Four down is settled now: its other cell takes the 1.", a, 1),
                 .sayHighlighting("Place a digit, then sweep both of its runs. The 1 is spent, so the rest of the six across is 2 and 3.", [b, c]),
-                .requireEntry("19 across already has its 3, so the last two cells make 16 — and 8+8 is out, leaving 7 and 9. That forces 11 down to be 2+9, not 3+8. Place the 9.", e, 9),
-                .solveFreely("Three cells left. Each run tells you exactly what's missing — and nothing repeats."),
-                .celebrate("No Repeats does the quiet work: every digit you place is crossed off two runs at once, and every tidy even split — 2+2, 8+8, 2+2+2 — is illegal."),
+                .requireEntry("19 across already has its 3, so the last two cells make 16. Since 8+8 is out, that leaves 7 and 9. That forces 11 down to be 2+9, not 3+8. Place the 9.", e, 9),
+                .solveFreely("Three cells left. Each run tells you exactly what's missing, and nothing repeats."),
+                .celebrate("No Repeats does the quiet work: every digit you place is crossed off two runs at once, and every tidy even split (2+2, 8+8, 2+2+2) is illegal."),
             ]
         )
     }
@@ -172,11 +172,11 @@ nonisolated enum TutorialPuzzles {
             puzzle: magicBoard,
             steps: [
                 .say(TechniqueContent.lesson(for: .magicBlock)),
-                .sayHighlighting("17 across in two cells: the only pair is 8+9. That's a magic block — before knowing the order, you know the digits.", [topLeft, topRight]),
-                .sayHighlighting("The crossing 16 down is also magic: {7,9}. The shared corner must be in both {8,9} and {7,9} — only 9 fits.", [topLeft]),
+                .sayHighlighting("17 across in two cells: the only pair is 8+9. That's a magic block: before knowing the order, you know the digits.", [topLeft, topRight]),
+                .sayHighlighting("The crossing 16 down is also magic: {7,9}. The shared corner must be in both {8,9} and {7,9}, so only 9 fits.", [topLeft]),
                 .requireEntry("Place the 9 where the two magic blocks cross.", topLeft, 9),
                 .requireEntry("The 17 run's other cell takes the remaining 8.", topRight, 8),
-                .solveFreely("The rest of the board is magic blocks crossing magic blocks. Finish it — tap a clue any time to see a run's combinations."),
+                .solveFreely("The rest of the board is magic blocks crossing magic blocks. Finish it, and tap a clue any time to see a run's combinations."),
                 .celebrate("Magic blocks first, always. Low sums (3, 4, 6, 7) and high sums (16, 17, 23, 24) are where every Kakuro cracks open."),
             ]
         )
@@ -193,9 +193,9 @@ nonisolated enum TutorialPuzzles {
             puzzle: crossBoard,
             steps: [
                 .say(TechniqueContent.lesson(for: .crossReference)),
-                .sayHighlighting("No magic blocks here — 12 across can be 3+9, 4+8 or 5+7. But the down run's options overlap it in only a few digits.", [corner]),
-                .requireNote("Work the corner: 12 across allows 3, 4, 5, 7, 8 and 9; 8 down allows 1, 2, 3, 5, 6 and 7. Note the overlap — 3, 5 and 7.", corner, [3, 5, 7]),
-                .solveFreely("Keep crossing clues until digits are forced. Solve the board — notes are your friend."),
+                .sayHighlighting("No magic blocks here. 12 across can be 3+9, 4+8 or 5+7. But the down run's options overlap it in only a few digits.", [corner]),
+                .requireNote("Work the corner: 12 across allows 3, 4, 5, 7, 8 and 9; 8 down allows 1, 2, 3, 5, 6 and 7. Note the overlap: 3, 5 and 7.", corner, [3, 5, 7]),
+                .solveFreely("Keep crossing clues until digits are forced. Solve the board, and lean on your notes."),
                 .celebrate("Cross-referencing turns two vague clues into one sharp fact. With magic blocks, it carries you through most easy puzzles."),
             ]
         )
@@ -204,9 +204,10 @@ nonisolated enum TutorialPuzzles {
     /// Techniques without a scripted board teach with a short lesson and a
     /// free-solve exam on a generated board known to require them.
     @MainActor
-    private static func generatedLesson(for technique: Technique) async -> TutorialLesson {
+    static func generatedLesson(for technique: Technique,
+                                control: KakuroGenerator.Control = .none) async -> TutorialLesson {
         let generated = await Task.detached(priority: .userInitiated) {
-            PracticeDrills.drillPuzzle(for: technique)
+            PracticeDrills.drillPuzzle(for: technique, control: control)
         }.value
         return TutorialLesson(
             id: "t\(technique.rawValue)",
@@ -217,9 +218,10 @@ nonisolated enum TutorialPuzzles {
             steps: [
                 .say(TechniqueContent.lesson(for: technique)),
                 .say(TechniqueContent.rule(for: technique)),
-                .solveFreely("Solve this board — it needs \(technique.displayName) at least once. Tap any clue to see which digit sets still fit."),
+                .solveFreely("Solve this board. It needs \(technique.displayName) at least once. Tap any clue to see which digit sets still fit."),
                 .celebrate("\(technique.displayName) added to your toolkit. Drill it in Practice to make it automatic."),
-            ]
+            ],
+            techniqueProfile: generated.techniqueProfile
         )
     }
 }

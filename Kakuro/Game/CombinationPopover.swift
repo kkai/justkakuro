@@ -51,7 +51,7 @@ struct CombinationPopover: View {
                 }
             }
             if combinations.isEmpty {
-                Text("No combination fits the current entries — something is off in this run.")
+                Text("No combination fits the current entries, so something is off in this run.")
                     .font(.footnote)
                     .foregroundStyle(Theme.error)
             } else {

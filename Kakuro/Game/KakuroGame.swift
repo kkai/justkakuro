@@ -28,8 +28,20 @@ final class KakuroGame {
 
     private var lastTick: Date?
 
-    init(puzzle: GeneratedPuzzle) {
+    /// The difficulty the player asked for, which is not always the one they
+    /// got: `generate` returns the nearest band when its candidate budget runs
+    /// out. Stats keys on this so a best time lands in the column the player
+    /// actually chose, consistent with `PuzzleCache`, `Route` and
+    /// `recordLastPlayed`. Optional so saves written before it existed still
+    /// decode; those fall back to the delivered band.
+    let requestedDifficulty: Difficulty?
+
+    /// The difficulty a solve should be filed under.
+    var difficultyForRecords: Difficulty { requestedDifficulty ?? generated.difficulty }
+
+    init(puzzle: GeneratedPuzzle, requestedDifficulty: Difficulty? = nil) {
         self.generated = puzzle
+        self.requestedDifficulty = requestedDifficulty
     }
 
     // MARK: - Input
@@ -102,6 +114,20 @@ final class KakuroGame {
     func undo() {
         guard phase == .playing, let inverse = undoStack.popLast() else { return }
         inverse.apply(to: &board)
+    }
+
+    /// Cells that have already earned mastery credit in this game.
+    ///
+    /// Undo deliberately does not clear these. Placing a digit, undoing, and
+    /// placing it again looks identical to a fresh deduction from the board
+    /// state alone, so without this a player could farm a technique to
+    /// "Learned" by tapping undo in a loop.
+    private var creditedPositions: Set<GridPosition> = []
+
+    /// Claims the one-off mastery credit for a cell. Returns false if this cell
+    /// has already paid out.
+    func claimMasteryCredit(at position: GridPosition) -> Bool {
+        creditedPositions.insert(position).inserted
     }
 
     /// Applies a hint's placements/eliminations as one undoable batch.
@@ -230,14 +256,19 @@ final class KakuroGame {
         let board: BoardState
         let undoStack: [Move]
         let elapsed: TimeInterval
+        /// Optional for backward compatibility with saves written before this
+        /// field existed.
+        var requestedDifficulty: Difficulty?
     }
 
     var snapshot: Snapshot {
-        Snapshot(generated: generated, board: board, undoStack: undoStack, elapsed: elapsed)
+        Snapshot(generated: generated, board: board, undoStack: undoStack,
+                 elapsed: elapsed, requestedDifficulty: requestedDifficulty)
     }
 
     convenience init(snapshot: Snapshot) {
-        self.init(puzzle: snapshot.generated)
+        self.init(puzzle: snapshot.generated,
+                  requestedDifficulty: snapshot.requestedDifficulty)
         board = snapshot.board
         undoStack = snapshot.undoStack
         elapsed = snapshot.elapsed

@@ -25,6 +25,9 @@ struct TutorialLesson: Identifiable {
     let summary: String
     let puzzle: KakuroPuzzle
     let steps: [TutorialStep]
+    /// Supplied when the caller already solved this board, so the engine does
+    /// not repeat the work on the main actor while the screen is appearing.
+    var techniqueProfile: [Technique: Int]?
 }
 
 /// Drives a lesson: exposes the current step, filters game input, advances
@@ -41,11 +44,11 @@ final class TutorialEngine {
 
     init(lesson: TutorialLesson) {
         self.lesson = lesson
-        let logical = LogicalSolver.solve(lesson.puzzle)
+        let profile = lesson.techniqueProfile ?? LogicalSolver.solve(lesson.puzzle).histogram
         let generated = GeneratedPuzzle(
             puzzle: lesson.puzzle,
             difficulty: .easy,
-            techniqueProfile: logical.histogram
+            techniqueProfile: profile
         )
         self.game = KakuroGame(puzzle: generated)
     }

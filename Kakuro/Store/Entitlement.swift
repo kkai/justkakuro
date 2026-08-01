@@ -27,7 +27,7 @@ nonisolated enum PaidFeature: String, CaseIterable, Sendable, Identifiable {
         case .practiceDrills:
             "Targeted drills for every technique, with mastery tracking that knows what you've actually earned unaided."
         case .teachingHints:
-            "Stuck? A hint that names the technique, shows you where it applies, and explains why — instead of just filling in a cell."
+            "A hint that names the technique and shows you where it applies, instead of filling in the cell for you."
         case .largeBoards:
             "The full-size puzzles, where the deeper techniques start to matter."
         case .stats:

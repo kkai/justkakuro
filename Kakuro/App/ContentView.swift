@@ -92,7 +92,7 @@ struct GameLoaderView: View {
 
             // nil means cancelled — this view is on its way out.
             guard let generated = await request.puzzle() else { return }
-            let fresh = KakuroGame(puzzle: generated)
+            let fresh = KakuroGame(puzzle: generated, requestedDifficulty: difficulty)
             if progress.settings.autoNotes {
                 fresh.fillAutoNotes()
             }
@@ -145,7 +145,7 @@ struct MissingSaveView: View {
     var body: some View {
         ZStack {
             Theme.paper.ignoresSafeArea()
-            Text("That game is finished — start a new one from Home.")
+            Text("That game is finished. Start a new one from Home.")
                 .font(.subheadline)
                 .foregroundStyle(Theme.inkSoft)
                 .padding()

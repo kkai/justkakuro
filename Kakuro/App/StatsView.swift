@@ -127,14 +127,11 @@ struct StatsView: View {
     }
 
     private func formatTime(_ interval: TimeInterval) -> String {
-        let seconds = Int(interval)
-        return String(format: "%d:%02d", seconds / 60, seconds % 60)
+        TimeFormatting.clock(interval)
     }
 
     private func formatDuration(_ interval: TimeInterval) -> String {
-        let minutes = Int(interval) / 60
-        if minutes < 60 { return "\(minutes)m" }
-        return "\(minutes / 60)h \(minutes % 60)m"
+        TimeFormatting.duration(interval)
     }
 }
 

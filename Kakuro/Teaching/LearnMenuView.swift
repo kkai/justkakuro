@@ -72,6 +72,19 @@ struct LearnMenuView: View {
         }
         .buttonStyle(.plain)
         .disabled(masteryLocked)
+        // The badge is the only carrier of mastery state and is hidden from
+        // VoiceOver, so without this every lesson reads identically whether it
+        // is finished, available or locked.
+        .accessibilityValue(rowState(state, paywalled: paywalled))
+    }
+
+    private func rowState(_ state: MasteryTracker.MasteryState, paywalled: Bool) -> String {
+        if paywalled { return "locked, included in the full game" }
+        switch state {
+        case .learned: return "completed"
+        case .locked: return "locked"
+        default: return "not started"
+        }
     }
 
     @ViewBuilder

@@ -8,6 +8,8 @@ struct TutorialView: View {
 
     @State private var engine: TutorialEngine?
     @State private var tappedClue: ClueSelection?
+    @State private var fraction: Double = 0
+    @State private var startedAt = Date.now
 
     var body: some View {
         ZStack {
@@ -15,19 +17,42 @@ struct TutorialView: View {
             if let engine {
                 lessonBody(engine)
             } else {
-                VStack(spacing: 12) {
-                    ProgressView()
-                    Text("Setting up the lesson…")
-                        .font(.subheadline)
-                        .foregroundStyle(Theme.inkSoft)
-                }
+                PuzzleLoadingView(fraction: fraction, startedAt: startedAt) { dismiss() }
             }
         }
         .navigationTitle(engine?.lesson.title ?? "")
         .navigationBarTitleDisplayMode(.inline)
         .task {
             guard engine == nil else { return }
-            engine = TutorialEngine(lesson: await TutorialPuzzles.lesson(for: technique))
+            // Baked lessons resolve immediately; the rest search for a board and
+            // must be interruptible, or backing out leaves the work running.
+            if let baked = TutorialPuzzles.bakedLesson(for: technique) {
+                engine = TutorialEngine(lesson: baked)
+            } else if let technique, let lesson = await buildLesson(technique) {
+                engine = TutorialEngine(lesson: lesson)
+            }
+        }
+    }
+
+    private func buildLesson(_ technique: Technique) async -> TutorialLesson? {
+        let (stream, continuation) = AsyncStream.makeStream(
+            of: Double.self, bufferingPolicy: .bufferingNewest(1))
+        let task = Task { @MainActor () -> TutorialLesson? in
+            let control = KakuroGenerator.Control(
+                isCancelled: { Task.isCancelled },
+                onProgress: { continuation.yield($0) })
+            let lesson = await TutorialPuzzles.generatedLesson(for: technique, control: control)
+            continuation.finish()
+            return Task.isCancelled ? nil : lesson
+        }
+        let watcher = Task { @MainActor in
+            for await value in stream { fraction = max(fraction, value) }
+        }
+        defer { watcher.cancel() }
+        return await withTaskCancellationHandler {
+            await task.value
+        } onCancel: {
+            task.cancel()
         }
     }
 
@@ -45,6 +70,10 @@ struct TutorialView: View {
             TutorialPadView(engine: engine)
         }
         .padding(16)
+        // Match every other screen: without this the pad stretches
+        // across a 13-inch iPad, giving ~190pt digit keys.
+        .frame(maxWidth: 560)
+        .frame(maxWidth: .infinity)
         .sheet(item: $tappedClue) { selection in
             CombinationSheet(selection: selection) { engine.game.remainingCombinations(for: $0) }
         }

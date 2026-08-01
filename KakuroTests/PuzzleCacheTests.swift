@@ -50,7 +50,7 @@ import Testing
 
         cache.warm(size: .small, difficulty: .easy)
         // Let the warm task actually enter the generator.
-        while fake.calls == 0 { await Task.yield() }
+        await waitUntil("the generator to start") { fake.calls >= 1 }
 
         let request = cache.request(size: .small, difficulty: .easy)
         // Assert here, not after awaiting: consuming a puzzle deliberately
@@ -67,10 +67,10 @@ import Testing
         let cache = makeCache(fake)
 
         cache.warm(size: .small, difficulty: .easy)
-        while fake.calls == 0 { await Task.yield() }
+        await waitUntil("the generator to start") { fake.calls >= 1 }
         // Superseding warm — the first is speculative and unclaimed, so it goes.
         cache.warm(size: .medium, difficulty: .hard)
-        while fake.calls < 2 { await Task.yield() }
+        await waitUntil("the second generation to start") { fake.calls >= 2 }
 
         // Exactly two: the cancelled one and the survivor. Checked before any
         // claim, so the re-warm cannot inflate it.
@@ -87,7 +87,7 @@ import Testing
         let cache = makeCache(fake)
 
         let request = cache.request(size: .small, difficulty: .easy)
-        while fake.calls == 0 { await Task.yield() }
+        await waitUntil("the generator to start") { fake.calls >= 1 }
 
         let consumer = Task { await request.puzzle() }
         consumer.cancel()
@@ -107,12 +107,29 @@ import Testing
 
         let first = await cache.request(size: .small, difficulty: .easy).puzzle()
         #expect(first != nil)
-        // Consuming re-warms, so a follow-up claim reuses that entry rather
-        // than generating from scratch.
-        while fake.calls < 2 { await Task.yield() }
+
+        // The re-warm runs on a detached task. Wait against a deadline rather
+        // than spinning: under full-suite CPU load a bare yield loop can starve
+        // it long enough to look like a failure.
+        await waitUntil("the consumed key is re-warmed") { fake.calls >= 2 }
+        let callsAfterRewarm = fake.calls
+
+        // The point of the re-warm: the next claim is served by it, not by a
+        // fresh generation. Asserted relatively, so an extra background warm
+        // cannot turn a pass into a failure.
         let second = await cache.request(size: .small, difficulty: .easy).puzzle()
         #expect(second != nil)
-        #expect(fake.calls == 2, "the re-warm should have served the second request")
+        #expect(fake.calls == callsAfterRewarm,
+                "the re-warm should have served the second request")
+    }
+
+    /// Polls a condition against a generous deadline.
+    private func waitUntil(_ what: String, _ condition: () -> Bool) async {
+        let deadline = ContinuousClock.now.advanced(by: .seconds(10))
+        while !condition(), ContinuousClock.now < deadline {
+            try? await Task.sleep(for: .milliseconds(5))
+        }
+        #expect(condition(), "timed out waiting for \(what)")
     }
 
     @Test func repeatedWarmsOfTheSameKeyGenerateOnce() async {
@@ -122,7 +139,7 @@ import Testing
         cache.warm(size: .small, difficulty: .easy)
         cache.warm(size: .small, difficulty: .easy)
         cache.warm(size: .small, difficulty: .easy)
-        while fake.calls == 0 { await Task.yield() }
+        await waitUntil("the generator to start") { fake.calls >= 1 }
 
         #expect(fake.calls == 1, "warming an already-warm key must be a no-op")
         fake.release()

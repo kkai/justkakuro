@@ -12,13 +12,13 @@ nonisolated enum TechniqueContent {
         case .duplicateInRun:
             "A digit can appear only once in a run. Anything already placed is off the table for the rest of its row and column runs."
         case .magicBlock:
-            "Some sums have exactly one set of digits — a magic block. A 2-cell 17 can only be 8+9; a 3-cell 6 can only be 1+2+3."
+            "Some sums have exactly one set of digits. That's a magic block: a 2-cell 17 can only be 8+9, and a 3-cell 6 can only be 1+2+3."
         case .crossReference:
             "Every cell belongs to two runs. Only digits possible in both the across run and the down run can go there."
         case .minMaxBounds:
             "Check what the rest of the run can still add up to. If a digit would push the sum too high or leave it unreachable, it's out."
         case .nakedSingle:
-            "When only one candidate is left in a cell, that's the answer — place it."
+            "When only one candidate is left in a cell, that's the answer. Place it."
         case .hiddenSingle:
             "If a digit the run needs fits in only one of its cells, it must go there, whatever else that cell could be."
         case .combinationReduction:
@@ -32,15 +32,15 @@ nonisolated enum TechniqueContent {
     static func lesson(for technique: Technique) -> String {
         switch technique {
         case .duplicateInRun:
-            "Kakuro's one hard rule inside a run: no digit repeats. Every placement you make immediately narrows its row run and its column run. Make that your reflex — place a digit, then sweep both runs."
+            "Kakuro's one hard rule inside a run: no digit repeats. Every placement you make immediately narrows its row run and its column run. Make that your reflex: place a digit, then sweep both runs."
         case .magicBlock:
-            "The fastest wins in Kakuro come from sums with a single possible digit set. Learn the short list — 3, 4, 16, 17 in two cells; 6, 7, 23, 24 in three — and scan for them first. They anchor everything else."
+            "The fastest wins in Kakuro come from sums with a single possible digit set. Learn the short list (3, 4, 16, 17 in two cells; 6, 7, 23, 24 in three) and scan for them first. They anchor everything else."
         case .crossReference:
             "A cell answers to two clues at once. Work out the digits its across run allows, then its down run, and keep only the overlap. Where a magic block crosses another run, this often pins a cell exactly."
         case .minMaxBounds:
             "Every partial run leaves a remainder. If two cells must make 6, no cell can hold 7. If they must make 16, nothing below 7 works. High and low bounds quietly rule out most of the pad."
         case .nakedSingle:
-            "Keep notes as you go. The moment eliminations leave one candidate in a cell, it's decided — enter it and let the new digit ripple through both runs."
+            "Keep notes as you go. The moment eliminations leave one candidate in a cell, it's decided. Enter it and let the new digit ripple through both runs."
         case .hiddenSingle:
             "Sometimes a cell has options, but the run doesn't. If every remaining combination needs a 9 and only one cell can still take it, the 9 is placed for you."
         case .combinationReduction:
@@ -58,7 +58,7 @@ nonisolated enum TechniqueContent {
         case .duplicateInRun:
             return "A digit already on the board is doing more work than you've used \(place)."
         case .magicBlock:
-            return "There's a magic block \(place) — a sum with only one possible digit set."
+            return "There's a magic block \(place), a sum with only one possible digit set."
         case .crossReference:
             return "Two clues overlap \(place); their crossing narrows a cell nicely."
         case .minMaxBounds:
@@ -68,7 +68,7 @@ nonisolated enum TechniqueContent {
         case .hiddenSingle:
             return "A run \(place) needs a digit that has only one home."
         case .combinationReduction:
-            return "Compare the surviving combinations \(place) — they agree on more than you'd think."
+            return "Compare the surviving combinations \(place). They agree on more than you'd think."
         case .surplusDeficit:
             return "Try the arithmetic \(place): the certain cells nearly settle the run."
         }
@@ -84,7 +84,7 @@ nonisolated enum TechniqueContent {
                 let digits = list(DigitSet.digits(combo))
                 let run = step.involvedRuns.first.map { puzzle.runs[$0] }
                 let sum = run.map { "\($0.sum)" } ?? "this sum"
-                return "\(sum) in \(run?.length ?? 0) cells works only as \(digits). Note those digits — nothing else can enter this run."
+                return "\(sum) in \(run?.length ?? 0) cells works only as \(digits). Note those digits. Nothing else can enter this run."
             }
             return rule(for: .magicBlock)
         case .crossReference:

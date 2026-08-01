@@ -15,6 +15,10 @@ struct GameView: View {
     @State private var tappedClue: ClueSelection?
     @State private var sweep: [GridPosition: Int] = [:]
     @State private var showWinSheet = false
+    /// Set when the player taps Apply on a hint, consumed by the next entry
+    /// change so that placement does not count toward unaided mastery.
+    @State private var appliedHint = false
+    @State private var newBestTime = false
 
     var body: some View {
         ZStack {
@@ -37,10 +41,9 @@ struct GameView: View {
         .onChange(of: game.phase) { _, phase in
             if phase == .won {
                 progress.clearSavedGame()
-                let isRecord = progress.recordSolve(
-                    size: sizeOf(game.puzzle), difficulty: game.generated.difficulty,
+                newBestTime = progress.recordSolve(
+                    size: sizeOf(game.puzzle), difficulty: game.difficultyForRecords,
                     time: game.elapsed)
-                _ = isRecord
                 Haptics.win()
                 showWinSheet = true
             } else {
@@ -55,7 +58,16 @@ struct GameView: View {
         // mid-puzzle used to lose the whole board.
         .onChange(of: game.board) { _, _ in persist() }
         .onChange(of: scenePhase) { _, phase in
-            if phase != .active { persist() }
+            if phase != .active {
+                // Pause, don't just save. `tick` adds a wall-clock delta, and
+                // Task.sleep runs on a continuous clock, so without this the
+                // first tick after returning folds the entire background
+                // interval into `elapsed` — an overnight background added ~8
+                // hours to lifetime play time and could poison a first best
+                // time. Pausing clears `lastTick` and stops the timer task.
+                game.pause()
+                persist()
+            }
         }
         .onDisappear { persist() }
         .sheet(isPresented: $showWinSheet) { winSheet }
@@ -67,6 +79,9 @@ struct GameView: View {
                 HintBanner(hint: hint) {
                     advanceHint()
                 } onApply: {
+                    // Consumed by handleEntriesChange: the placement this makes
+                    // is the hint's work, not the player's.
+                    appliedHint = true
                     game.apply(hint.application)
                     self.hint = nil
                 } onDismiss: {
@@ -208,9 +223,13 @@ struct GameView: View {
 
     private func handleEntriesChange(old: [GridPosition: Int], new: [GridPosition: Int]) {
         // Mastery: does the new entry match the pending logical step?
+        let wasApplied = appliedHint
+        appliedHint = false
         if new.count == old.count + 1,
            let added = new.first(where: { old[$0.key] == nil }) {
-            mastery.recordEntry(position: added.key, digit: added.value, game: game)
+            let firstTimeHere = game.claimMasteryCredit(at: added.key)
+            mastery.recordEntry(position: added.key, digit: added.value, game: game,
+                                unaided: !wasApplied && firstTimeHere)
         }
         // Run-completion sweep.
         var completed: [GridPosition: Int] = [:]
@@ -243,9 +262,16 @@ struct GameView: View {
             Text(formatTime(game.elapsed))
                 .font(Theme.digitFont(size: 40))
                 .foregroundStyle(Theme.indigo)
-            if let best = progress.bestTime(size: sizeOf(game.puzzle),
-                                            difficulty: game.generated.difficulty) {
-                Text(best >= game.elapsed ? "New best time" : "Best: \(formatTime(best))")
+            // Taken from recordSolve rather than re-derived by comparing against
+            // a store that has already been updated: on an exact tie the old
+            // comparison claimed a new best that was never recorded.
+            if newBestTime {
+                Text("New best time")
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.inkSoft)
+            } else if let best = progress.bestTime(size: sizeOf(game.puzzle),
+                                                   difficulty: game.difficultyForRecords) {
+                Text("Best: \(formatTime(best))")
                     .font(.subheadline)
                     .foregroundStyle(Theme.inkSoft)
             }
@@ -294,8 +320,7 @@ struct GameView: View {
     }
 
     private func formatTime(_ interval: TimeInterval) -> String {
-        let seconds = Int(interval)
-        return String(format: "%d:%02d", seconds / 60, seconds % 60)
+        TimeFormatting.clock(interval)
     }
 }
 

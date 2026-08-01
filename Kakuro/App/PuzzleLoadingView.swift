@@ -53,7 +53,7 @@ struct PuzzleLoadingView: View {
                             .tint(Theme.indigo)
                             .frame(maxWidth: 260)
                         caption(stage == .slow
-                                ? "Big boards take longer — this one is a stubborn build."
+                                ? "Big boards take longer. This one is a stubborn build."
                                 : "Searching for a board with exactly one solution…")
                         Button("Cancel", action: onCancel)
                             .font(.subheadline.weight(.medium))
@@ -64,7 +64,10 @@ struct PuzzleLoadingView: View {
                 }
             }
             .animation(Motion.overlay, value: stage)
-            .accessibilityElement(children: .combine)
+            // `.combine` would fold the Cancel button into one label and drop
+            // its text, leaving a VoiceOver user with no announced way out of a
+            // build that can run for seconds. `.contain` keeps it focusable.
+            .accessibilityElement(children: .contain)
             .accessibilityLabel("Building your puzzle")
         }
     }

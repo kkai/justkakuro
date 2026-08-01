@@ -14,6 +14,8 @@ struct PracticeView: View {
     @State private var hint: Hint?
     @State private var hintEngine = HintEngine()
     @State private var variant: UInt64 = 0
+    @State private var fraction: Double = 0
+    @State private var startedAt = Date.now
 
     var body: some View {
         ZStack {
@@ -23,12 +25,7 @@ struct PracticeView: View {
             } else if let game {
                 drillBody(game)
             } else {
-                VStack(spacing: 12) {
-                    ProgressView()
-                    Text("Building a drill…")
-                        .font(.subheadline)
-                        .foregroundStyle(Theme.inkSoft)
-                }
+                PuzzleLoadingView(fraction: fraction, startedAt: startedAt) { dismiss() }
             }
         }
         .navigationTitle(technique.displayName)
@@ -40,11 +37,39 @@ struct PracticeView: View {
             game = nil
             usedHint = false
             hint = nil
+            fraction = 0
+            startedAt = .now
             let v = variant
-            let generated = await Task.detached(priority: .userInitiated) {
-                PracticeDrills.drillPuzzle(for: technique, variant: v)
-            }.value
+            let generated = await buildDrill(variant: v)
+            guard let generated else { return }   // cancelled; the view is leaving
             game = KakuroGame(puzzle: generated)
+        }
+    }
+
+    /// Runs the drill search on a detached task whose cancellation actually
+    /// reaches the generator, so backing out stops the work instead of leaving
+    /// it to run on invisibly.
+    private func buildDrill(variant: UInt64) async -> GeneratedPuzzle? {
+        let technique = self.technique
+        let (stream, continuation) = AsyncStream.makeStream(
+            of: Double.self, bufferingPolicy: .bufferingNewest(1))
+        let task = Task.detached(priority: .userInitiated) { () -> GeneratedPuzzle? in
+            let control = KakuroGenerator.Control(
+                isCancelled: { Task.isCancelled },
+                onProgress: { continuation.yield($0) })
+            let drill = PracticeDrills.drillPuzzle(for: technique, variant: variant,
+                                                   control: control)
+            continuation.finish()
+            return Task.isCancelled ? nil : drill
+        }
+        let watcher = Task { @MainActor in
+            for await value in stream { fraction = max(fraction, value) }
+        }
+        defer { watcher.cancel() }
+        return await withTaskCancellationHandler {
+            await task.value
+        } onCancel: {
+            task.cancel()
         }
     }
 
@@ -59,6 +84,10 @@ struct PracticeView: View {
             NumberPadView(game: game)
         }
         .padding(16)
+        // Match every other screen: without this the pad stretches
+        // across a 13-inch iPad, giving ~190pt digit keys.
+        .frame(maxWidth: 560)
+        .frame(maxWidth: .infinity)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {

@@ -162,6 +162,67 @@ Before this, the budget-exhausted fallback returned a baked grid with **no uniqu
 
 `KakuroGenerator.Control` carries `isCancelled` and `onProgress`. The probe is explicit rather than a `Task.isCancelled` read inside the Engine, so generation stays independent of task context; callers pass `{ Task.isCancelled }`, which is *evaluated* on the generating task. Probes sit at cold sites only — the outer loop, the repair loop, and `fill`'s recursion gated at `steps & 0x3FF`. **Never probe inside `BacktrackingSolver.candidates(at:)`**; that path is pinned allocation-free at ~1µs/node.
 
+## Three techniques never appear in a solve trace
+
+Measured across 108 generated boards spanning every size and difficulty:
+`duplicateInRun`, `hiddenSingle` and `surplusDeficit` appear in **zero** of them
+(`combinationReduction` appears in only 16). The detectors ahead of them in
+curriculum order always reach the same cells first — a placement already strips
+the digit from its run-mates' candidates, so the dedicated no-repeat step never
+has work, and the cheap eliminations finish the board before the arithmetic ones
+are consulted.
+
+Consequences, all of which bit at once:
+
+- Their Practice drills cannot be found by search. `drillPuzzle` used to run 25
+  generations and then hand back a board with **zero** uses of the technique it
+  advertised. Those three now use hand-authored boards (`PracticeDrills.bakedGrids`);
+  `PracticeDrills.handAuthored` is the source of truth and the tests iterate it.
+- `MasteryTracker.recordEntry` credits the hardest technique in the deduction
+  chain, so these three can never be credited through play either. Their only
+  route to `.learned` is `recordDrillCompleted`, which is why the baked drills
+  matter beyond load time.
+- `TechniqueRecapView` will never list them on a win sheet.
+
+`PracticeDrillTests.handAuthoredTechniquesAreUnsearchable` pins the premise: if
+it starts failing, detector precedence changed and these could go back to being
+searched. Everything else uses `Options.accepts`, a predicate checked against the
+solve histogram inside the search, which replaced 24 generate-and-discard rounds
+with one filtered search (measured 0.004–0.115s, from up to 1.23s).
+
+## Statistics invariants
+
+- **Background = paused.** `GameView` pauses on `scenePhase` leaving `.active`.
+  `tick` adds a wall-clock delta and `Task.sleep` is on a continuous clock, so
+  without this an overnight background folded ~8 hours into `elapsed`, inflating
+  lifetime play time and poisoning first best times.
+- **Solves are filed under the *requested* difficulty**, via
+  `KakuroGame.difficultyForRecords`. `generate` returns the nearest band when its
+  budget runs out, and everything else (`PuzzleCache`, `Route`, `recordLastPlayed`)
+  keys on the request; stats used to key on the delivered band, so a best time
+  could land in a column the player never chose. `Snapshot.requestedDifficulty`
+  is optional so older saves still decode.
+- **Only the player earns mastery.** `recordEntry` takes `unaided:` because it
+  cannot infer it: a digit placed by tapping Apply on a hint looks identical from
+  the board state. `KakuroGame.claimMasteryCredit(at:)` makes each cell pay out
+  once per game, so place/undo/replace cannot farm credit.
+- Time formatting lives in `TimeFormatting`, not in three private view copies.
+  The copies are why a 72-minute solve rendered "72:14" and a first solve under a
+  minute rendered "0m played".
+
+## Driving the app: two traps that fake a pass
+
+- The segmented size/difficulty pickers expose **no accessibility segments** —
+  they are bare `TabGroup`s. A label-based tap silently does nothing, and the
+  test then measures the *default* selection while appearing to pass. Tap them by
+  coordinate (size row y≈280, difficulty y≈325, segment centres at x≈92/201/310
+  for a 402pt-wide screen) and confirm by screenshot or white-cell count.
+- `KakuroGame.tap()` toggles selection and the app auto-advances it, so a blind
+  tap-cell-then-digit loop deselects and drops entries. Read the entries back
+  from the tree (`row R, column C, <digit|empty>`) and retry until they match.
+- The saved game reaches the plist through cfprefsd, which buffers. Poll for
+  `kakuro.saveGame.v1` rather than reading once.
+
 ## Calibration workflow
 
 1. Build a CLI bench (above) that loops `makeTopology` → `fill` → mutate-repair → `LogicalSolver.solve`, collecting `DifficultyRater.score` for 30+ unique+solvable candidates per size
