@@ -298,7 +298,7 @@ struct HomeView: View {
             .overlay(alignment: .topTrailing) {
                 if paywalled {
                     Image(systemName: "lock.fill")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.system(size: Metrics.glyph, weight: .semibold))
                         .foregroundStyle(Theme.indigo)
                         .padding(10)
                 }

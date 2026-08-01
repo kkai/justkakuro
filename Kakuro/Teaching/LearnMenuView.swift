@@ -63,7 +63,7 @@ struct LearnMenuView: View {
                         .background(Capsule().fill(Theme.indigoWash))
                 }
                 Image(systemName: dimmed ? "lock" : "chevron.right")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: Metrics.glyph, weight: .medium))
                     .foregroundStyle(paywalled ? Theme.indigo : Theme.inkSoft)
             }
             .padding(14)
@@ -173,7 +173,7 @@ struct PracticeMenuView: View {
                         .tint(Theme.indigo)
                 }
                 Image(systemName: dimmed ? "lock" : "chevron.right")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: Metrics.glyph, weight: .medium))
                     .foregroundStyle(paywalled ? Theme.indigo : Theme.inkSoft)
             }
             .padding(14)

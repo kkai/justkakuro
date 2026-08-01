@@ -56,7 +56,7 @@ struct PaywallView: View {
             ForEach(PaidFeature.allCases) { feature in
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
                     Image(systemName: "checkmark")
-                        .font(.system(size: 12, weight: .bold))
+                        .font(.system(size: Metrics.glyph, weight: .bold))
                         .foregroundStyle(Theme.complete)
                     Text(feature.headline)
                         .font(.subheadline)
