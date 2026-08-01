@@ -94,7 +94,7 @@ struct TutorialView: View {
         .padding(16)
         // Match every other screen: without this the pad stretches
         // across a 13-inch iPad, giving ~190pt digit keys.
-        .frame(maxWidth: 560)
+        .frame(maxWidth: Metrics.column)
         .frame(maxWidth: .infinity)
         .sheet(item: $tappedClue) { selection in
             CombinationSheet(selection: selection) { engine.game.remainingCombinations(for: $0) }
@@ -145,7 +145,7 @@ struct TutorialView: View {
                         .padding(.vertical, 9)
                         .background(Capsule().fill(Theme.indigo))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.kakuro)
             }
         }
         .padding(16)
@@ -176,7 +176,7 @@ struct TutorialPadView: View {
                         .frame(maxWidth: .infinity, minHeight: 48)
                         .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Theme.surface))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.kakuro)
             }
             Button {
                 engine.game.notesMode.toggle()
@@ -190,7 +190,7 @@ struct TutorialPadView: View {
                             .fill(engine.game.notesMode ? Theme.indigo : Theme.surface)
                     )
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.kakuro)
             .accessibilityLabel("Notes")
         }
     }

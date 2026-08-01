@@ -60,7 +60,7 @@ struct HintBanner: View {
                             .padding(.vertical, 8)
                             .background(Capsule().fill(Theme.indigo))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.kakuro)
                 }
             }
         }

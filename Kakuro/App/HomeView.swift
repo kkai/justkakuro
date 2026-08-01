@@ -17,6 +17,13 @@ struct HomeView: View {
     /// `restorePickers()`.
     @State private var isRestoring = false
     @State private var didRestore = false
+    #if os(tvOS)
+    /// Where the remote should be pointing when Home appears. Without this the
+    /// focus engine picks the first control it finds, which is the Size picker:
+    /// a poor greeting, and it made every keypress sequence unpredictable.
+    @FocusState private var homeFocus: HomeFocus?
+    private enum HomeFocus: Hashable { case resume, play }
+    #endif
 
     var body: some View {
         ZStack {
@@ -44,7 +51,7 @@ struct HomeView: View {
                     }
                 }
                 .padding(20)
-                .frame(maxWidth: 560)
+                .frame(maxWidth: Metrics.column)
                 .frame(maxWidth: .infinity)
                 // Centre the column when it is shorter than the window instead
                 // of hanging it off the top. A phone screen is roughly the
@@ -96,9 +103,9 @@ struct HomeView: View {
             // would otherwise each pick their own scale and drift apart, taking
             // the diagonal off the K with them.
             ViewThatFits(in: .horizontal) {
-                lockup(fontSize: 44)
-                lockup(fontSize: 38)
-                lockup(fontSize: 32)
+                lockup(fontSize: Metrics.wordmark[0])
+                lockup(fontSize: Metrics.wordmark[1])
+                lockup(fontSize: Metrics.wordmark[2])
             }
             Text("The crossword of sums")
                 .font(.subheadline)
@@ -159,7 +166,10 @@ struct HomeView: View {
             .padding(18)
             .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.surface))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.kakuro)
+        #if os(tvOS)
+        .focused($homeFocus, equals: .resume)
+        #endif
     }
 
     /// Quiet row label, matching the secondary-text treatment used for the
@@ -196,8 +206,15 @@ struct HomeView: View {
                     .labelsHidden()
                     // Fill the column so both controls end where Play does.
                     // macOS sizes a segmented picker to its content, which left
-                    // them stopping short of the card's right edge.
-                    .frame(maxWidth: .infinity)
+                    // them stopping short of the card's right edge. tvOS is the
+                    // opposite problem: stretched across a 1100pt column each
+                    // segment became 300pt wide, so there it keeps its own size.
+                    .frame(maxWidth: Metrics.stretchesSegments ? .infinity : nil)
+                    // A Grid hands its column all the width going, and a
+                    // segmented picker takes whatever it is offered, so on
+                    // tvOS the segments spread to 300pt each. fixedSize is
+                    // what actually stops it; capping maxWidth does not.
+                    .fixedSize(horizontal: !Metrics.stretchesSegments, vertical: false)
                 }
                 GridRow {
                     rowLabel("Difficulty")
@@ -210,8 +227,15 @@ struct HomeView: View {
                     .labelsHidden()
                     // Fill the column so both controls end where Play does.
                     // macOS sizes a segmented picker to its content, which left
-                    // them stopping short of the card's right edge.
-                    .frame(maxWidth: .infinity)
+                    // them stopping short of the card's right edge. tvOS is the
+                    // opposite problem: stretched across a 1100pt column each
+                    // segment became 300pt wide, so there it keeps its own size.
+                    .frame(maxWidth: Metrics.stretchesSegments ? .infinity : nil)
+                    // A Grid hands its column all the width going, and a
+                    // segmented picker takes whatever it is offered, so on
+                    // tvOS the segments spread to 300pt each. fixedSize is
+                    // what actually stops it; capping maxWidth does not.
+                    .fixedSize(horizontal: !Metrics.stretchesSegments, vertical: false)
                 }
             }
             Button {
@@ -225,7 +249,10 @@ struct HomeView: View {
                     .frame(maxWidth: .infinity, minHeight: 50)
                     .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Theme.indigo))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.kakuro)
+            #if os(tvOS)
+            .focused($homeFocus, equals: .play)
+            #endif
         }
         .padding(18)
         .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.surface))
@@ -277,7 +304,7 @@ struct HomeView: View {
                 }
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.kakuro)
     }
 
     private func formatTime(_ interval: TimeInterval) -> String {

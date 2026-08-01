@@ -19,6 +19,10 @@ struct GameView: View {
     /// change so that placement does not count toward unaided mastery.
     @State private var appliedHint = false
     @State private var newBestTime = false
+    #if os(tvOS)
+    /// tvOS only: Select on a focused cell opens the digit chooser.
+    @State private var choosingDigit = false
+    #endif
 
     var body: some View {
         ZStack {
@@ -28,13 +32,31 @@ struct GameView: View {
             if game.phase == .paused {
                 pauseOverlay
             }
+            #if os(tvOS)
+            if choosingDigit {
+                Color.black.opacity(0.45).ignoresSafeArea()
+                DigitChooser(notesMode: game.notesMode,
+                             canErase: game.selected.map { game.board.entry(at: $0) != nil
+                                 || !game.board.notes(at: $0).isEmpty } ?? false) { command in
+                    game.handle(command)
+                } close: {
+                    choosingDigit = false
+                }
+                .transition(.scale(scale: 0.92).combined(with: .opacity))
+            }
+            #endif
         }
+        #if os(tvOS)
+        .animation(Motion.overlay, value: choosingDigit)
+        #endif
         .navigationTitleDisplay(.inline)
         .puzzleKeyboard { command in
             game.handle(command)
             if case .digit = command { Haptics.tap() }
         }
+        #if !os(tvOS)
         .toolbar { toolbarContent }
+        #endif
         .task(id: game.phase) {
             guard game.phase == .playing else { return }
             while !Task.isCancelled {
@@ -96,6 +118,12 @@ struct GameView: View {
                 .padding(.horizontal, 16)
                 .padding(.bottom, 4)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
+                #if os(tvOS)
+                // Its own section, so focus can leave the banner and return to
+                // the board rather than being caught by whichever of its four
+                // buttons happens to be nearest.
+                .focusSection()
+                #endif
             }
         }
         .animation(Motion.overlay, value: hint != nil)
@@ -107,7 +135,62 @@ struct GameView: View {
     /// otherwise. Keyed on the actual shape rather than the size class: an iPad
     /// in portrait is `.regular` but tall, and the side-by-side arrangement left
     /// the board using a quarter of the screen with the rest empty.
+    @ViewBuilder
     private var layout: some View {
+        #if os(tvOS)
+        // No keypad on screen. It would be focusable, so the remote could walk
+        // off the board into it, and then every digit would cost a trip across
+        // the screen and back. The chooser opens where the eye already is.
+        VStack(spacing: 24) {
+            HStack(spacing: 16) {
+                statusRow
+                tvControls
+            }
+            .frame(maxWidth: Metrics.column)
+            boardSection
+            Text(game.selected == nil
+                 ? "Move with the remote to pick a square"
+                 : "Press Select to enter a digit")
+                .font(.title3)
+                .foregroundStyle(Theme.inkSoft)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        #else
+        legacyLayout
+        #endif
+    }
+
+    /// Hint and the overflow menu, in the content rather than the toolbar.
+    ///
+    /// On tvOS a toolbar is its own focus container, sitting outside the view
+    /// tree the board lives in. Focus could climb into it and then had no way
+    /// back down: `focusSection` on the board did not help, because the two are
+    /// not in the same focus space to begin with. Rendering the controls as
+    /// ordinary buttons in the same stack as the board makes up and down mean
+    /// what they look like they mean.
+    #if os(tvOS)
+    private var tvControls: some View {
+        HStack(spacing: 12) {
+            Button { requestHint() } label: {
+                Label("Hint", systemImage: "lightbulb")
+            }
+            .accessibilityLabel("Hint")
+            Button { game.fillAutoNotes() } label: {
+                Label("Auto notes", systemImage: "pencil.circle")
+            }
+            Button {
+                game.phase == .paused ? game.resume() : game.pause()
+            } label: {
+                Label(game.phase == .paused ? "Resume" : "Pause",
+                      systemImage: game.phase == .paused ? "play" : "pause")
+            }
+        }
+        .buttonStyle(.kakuro)
+        .focusSection()
+    }
+    #endif
+
+    private var legacyLayout: some View {
         GeometryReader { proxy in
             if proxy.size.width > proxy.size.height {
                 HStack(spacing: 32) {
@@ -146,17 +229,33 @@ struct GameView: View {
                     boardSection
                     Spacer(minLength: 0)
                     NumberPadView(game: game)
-                        .frame(maxWidth: 560)
+                        .frame(maxWidth: Metrics.column)
                         .frame(maxWidth: .infinity)
                 }
             }
         }
     }
 
+    /// Grouped as a focus section on tvOS.
+    ///
+    /// Without it, focus that has climbed into the toolbar or dropped into the
+    /// hint banner cannot get back: the engine looks for a focusable view
+    /// directly along the direction of travel, and the cell it needs is usually
+    /// offset, or the nearest thing below the toolbar is a black cell, which is
+    /// deliberately not focusable. A section lets the engine aim at the group
+    /// and land on the nearest cell inside it, and `@FocusState` still holds the
+    /// cell you left, so you come back where you were.
     private var boardSection: some View {
-        BoardView(game: game, highlighted: hintHighlights, sweep: sweep) { pos in
-            handleTap(pos)
-        }
+        BoardView(game: game, highlighted: hintHighlights, sweep: sweep,
+                  onTap: { pos in handleTap(pos) },
+                  onActivate: { _ in
+                      #if os(tvOS)
+                      choosingDigit = true
+                      #endif
+                  })
+        #if os(tvOS)
+        .focusSection()
+        #endif
     }
 
     private var hintHighlights: Set<GridPosition> {
@@ -308,7 +407,7 @@ struct GameView: View {
                     .frame(maxWidth: .infinity, minHeight: 50)
                     .background(RoundedRectangle(cornerRadius: 12).fill(Theme.indigo))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.kakuro)
         }
         .padding(24)
         .mediumSheet()
@@ -332,7 +431,7 @@ struct GameView: View {
                         .padding(.vertical, 14)
                         .background(Capsule().fill(Theme.indigo))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.kakuro)
             }
         }
     }

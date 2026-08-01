@@ -55,7 +55,7 @@ struct NumberPadView: View {
                         .fill(game.highlightedDigit == digit ? Theme.indigo : Theme.surface)
                 )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.kakuro)
         .accessibilityLabel("digit \(digit)")
     }
 
@@ -71,7 +71,7 @@ struct NumberPadView: View {
                         .fill(active ? Theme.indigo : Theme.surface)
                 )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.kakuro)
         .accessibilityLabel(label)
     }
 
@@ -87,7 +87,7 @@ struct NumberPadView: View {
                         .fill(Theme.surface)
                 )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.kakuro)
         .disabled(!enabled)
     }
 }

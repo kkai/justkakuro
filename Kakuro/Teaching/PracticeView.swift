@@ -93,7 +93,7 @@ struct PracticeView: View {
         .padding(16)
         // Match every other screen: without this the pad stretches
         // across a 13-inch iPad, giving ~190pt digit keys.
-        .frame(maxWidth: 560)
+        .frame(maxWidth: Metrics.column)
         .frame(maxWidth: .infinity)
         .toolbar {
             ToolbarItem(placement: .primaryTrailing) {
@@ -162,7 +162,7 @@ struct PracticeView: View {
                             .padding(.vertical, 11)
                             .background(Capsule().fill(Theme.indigo))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.kakuro)
                     Button {
                         dismiss()
                     } label: {

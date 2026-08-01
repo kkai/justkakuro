@@ -18,7 +18,7 @@ struct LearnMenuView: View {
                     }
                 }
                 .padding(20)
-                .frame(maxWidth: 560)
+                .frame(maxWidth: Metrics.column)
                 .frame(maxWidth: .infinity)
             }
         }
@@ -70,7 +70,7 @@ struct LearnMenuView: View {
             .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.surface))
             .opacity(dimmed ? 0.6 : 1)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.kakuro)
         .disabled(masteryLocked)
         // The badge is the only carrier of mastery state and is hidden from
         // VoiceOver, so without this every lesson reads identically whether it
@@ -123,7 +123,7 @@ struct PracticeMenuView: View {
                     }
                 }
                 .padding(20)
-                .frame(maxWidth: 560)
+                .frame(maxWidth: Metrics.column)
                 .frame(maxWidth: .infinity)
             }
         }
@@ -180,7 +180,7 @@ struct PracticeMenuView: View {
             .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.surface))
             .opacity(dimmed ? 0.6 : 1)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.kakuro)
         .disabled(masteryLocked)
     }
 

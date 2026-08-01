@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Which way the selection moves.
-nonisolated enum SelectionDirection: Sendable, CaseIterable {
+nonisolated enum SelectionDirection: Sendable, CaseIterable, Hashable {
     case up, down, left, right
 
     var delta: (row: Int, col: Int) {
@@ -20,7 +20,7 @@ nonisolated enum SelectionDirection: Sendable, CaseIterable {
 /// `KeyPress`, because `KeyPress` cannot be constructed outside SwiftUI's own
 /// event delivery. A mapping that can only be exercised by pressing keys by hand
 /// is a mapping with no tests.
-nonisolated enum PuzzleKeyCommand: Equatable, Sendable {
+nonisolated enum PuzzleKeyCommand: Equatable, Sendable, Hashable {
     case digit(Int)
     case erase
     case toggleNotes
@@ -99,7 +99,19 @@ private struct PuzzleKeyboard: ViewModifier {
 }
 
 extension View {
+    /// No-op on tvOS, and that is the whole point.
+    ///
+    /// `PuzzleKeyboard` makes the entire screen one focusable item and disables
+    /// the focus effect. On iOS and macOS that is exactly right: it is a shim
+    /// for a hardware keyboard and there is a pointer for everything else. On
+    /// tvOS the focus engine IS the cursor, so a single screen-sized focus
+    /// target leaves the remote with nowhere to go and the board unreachable.
+    @ViewBuilder
     func puzzleKeyboard(_ handle: @escaping (PuzzleKeyCommand) -> Void) -> some View {
+        #if os(tvOS)
+        self
+        #else
         modifier(PuzzleKeyboard(handle: handle))
+        #endif
     }
 }
