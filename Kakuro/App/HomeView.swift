@@ -21,6 +21,7 @@ struct HomeView: View {
     var body: some View {
         ZStack {
             Theme.paper.ignoresSafeArea()
+            GeometryReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
                     wordmark
@@ -45,6 +46,13 @@ struct HomeView: View {
                 .padding(20)
                 .frame(maxWidth: 560)
                 .frame(maxWidth: .infinity)
+                // Centre the column when it is shorter than the window instead
+                // of hanging it off the top. A phone screen is roughly the
+                // height of this content so it changes little there, but a Mac
+                // window is any height at all, and top-aligned left a band of
+                // dead space under the tiles.
+                .frame(minHeight: proxy.size.height)
+            }
             }
         }
         // Home draws its own title, so the bar would only add a second one.
