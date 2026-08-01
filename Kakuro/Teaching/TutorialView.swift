@@ -21,7 +21,29 @@ struct TutorialView: View {
             }
         }
         .navigationTitle(engine?.lesson.title ?? "")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationTitleDisplay(.inline)
+        .puzzleKeyboard { command in
+            guard let engine else { return }
+            // Everything goes through the engine, never through the game. The
+            // lesson script decides whether an entry counts, and the pad on
+            // screen is wired the same way (TutorialPadView).
+            switch command {
+            case .digit(let digit):
+                engine.handleDigit(digit)
+            case .toggleNotes:
+                engine.game.notesMode.toggle()
+            case .move(let direction):
+                if let target = engine.game.nextWhite(from: engine.game.selected, direction) {
+                    engine.handleTap(target)
+                }
+            // Erase, undo and deselect have no key here because the lesson pad
+            // has no such buttons: a lesson is a fixed sequence, and letting the
+            // keyboard unwind it would leave the script pointing at a step the
+            // board no longer matches.
+            case .erase, .undo, .deselect:
+                break
+            }
+        }
         .task {
             guard engine == nil else { return }
             // Baked lessons resolve immediately; the rest search for a board and

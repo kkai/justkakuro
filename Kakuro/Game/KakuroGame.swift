@@ -65,6 +65,54 @@ final class KakuroGame {
         }
     }
 
+    /// Where an arrow key would land, without moving anything.
+    ///
+    /// Black cells are stepped over rather than stopped at, so arrowing off the
+    /// end of a run lands in the next one, the way it does in a crossword.
+    /// Returns nil when there is nothing playable that way.
+    ///
+    /// Separate from `moveSelection` because the tutorial has to put the
+    /// destination through `TutorialEngine.handleTap` rather than assigning it:
+    /// a lesson that watches taps but not arrow keys could be walked out from
+    /// under.
+    func nextWhite(from origin: GridPosition?, _ direction: SelectionDirection) -> GridPosition? {
+        guard let origin else { return puzzle.whitePositions.min() }
+        let (dr, dc) = direction.delta
+        var row = origin.row + dr
+        var col = origin.col + dc
+        while row >= 0, row < puzzle.rows, col >= 0, col < puzzle.cols {
+            if puzzle.cells[row][col].isWhite {
+                return GridPosition(row: row, col: col)
+            }
+            row += dr
+            col += dc
+        }
+        return nil
+    }
+
+    /// Moves the selection one playable cell in `direction`. At the edge the
+    /// selection stays put: silently deselecting loses the player's place
+    /// mid-typing.
+    func moveSelection(_ direction: SelectionDirection) {
+        guard phase == .playing else { return }
+        if let target = nextWhite(from: selected, direction) {
+            selected = target
+        }
+    }
+
+    /// Applies a keystroke. Every case routes to input that already exists, so
+    /// the keyboard cannot do anything the on-screen pad cannot.
+    func handle(_ command: PuzzleKeyCommand) {
+        switch command {
+        case .digit(let digit): enter(digit)
+        case .erase: clearSelected()
+        case .toggleNotes: notesMode.toggle()
+        case .undo: undo()
+        case .deselect: selected = nil
+        case .move(let direction): moveSelection(direction)
+        }
+    }
+
     func place(_ digit: Int, at pos: GridPosition) {
         let old = board.entries[pos]
         guard old != digit else {

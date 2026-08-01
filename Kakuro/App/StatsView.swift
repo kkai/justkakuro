@@ -27,7 +27,7 @@ struct StatsView: View {
             }
         }
         .navigationTitle("Stats")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationTitleDisplay(.large)
     }
 
     private var overviewCard: some View {
@@ -176,7 +176,7 @@ struct SettingsView: View {
             }
         }
         .navigationTitle("Settings")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationTitleDisplay(.large)
         .onChange(of: progress.settings.hapticsEnabled) { _, enabled in
             Haptics.enabled = enabled
         }
