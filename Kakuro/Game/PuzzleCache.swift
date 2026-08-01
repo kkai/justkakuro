@@ -76,6 +76,13 @@ final class PuzzleCache {
         }
     }
 
+    /// Whether a generation for this key is running or already finished.
+    /// Exists so tests can assert cache state directly instead of inferring it
+    /// from how many times the generator happened to have been called.
+    func isWarm(size: BoardSize, difficulty: Difficulty) -> Bool {
+        entries[CacheKey(size: size, difficulty: difficulty)] != nil
+    }
+
     // MARK: - Internals
 
     private func makeEntry(_ key: CacheKey, priority: TaskPriority) -> Entry {
