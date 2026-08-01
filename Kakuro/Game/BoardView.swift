@@ -17,8 +17,18 @@ struct BoardView: View {
         GeometryReader { proxy in
             let dimension = CGFloat(max(game.puzzle.rows, game.puzzle.cols))
             let gap: CGFloat = 1
-            let cellSize = ((min(proxy.size.width, proxy.size.height)
-                             - gap * (dimension - 1)) / dimension).rounded(.down)
+            // Capped, because a Mac window has no natural width the way a phone
+            // does, and a maximised one would otherwise give 9 cells the full
+            // height of a 27-inch display.
+            //
+            // The cap is deliberately loose. At 64 it bound at the default
+            // window size, so the board stopped growing while there was still
+            // room and left a band of dead space under it. At 88 the ordinary
+            // case is limited by the space available, the way it is on a phone,
+            // and the cap only steps in once the window is genuinely large.
+            let fitted = ((min(proxy.size.width, proxy.size.height)
+                           - gap * (dimension - 1)) / dimension).rounded(.down)
+            let cellSize = min(fitted, 88)
             let boardWidth = cellSize * CGFloat(game.puzzle.cols) + gap * (CGFloat(game.puzzle.cols) - 1)
             let boardHeight = cellSize * CGFloat(game.puzzle.rows) + gap * (CGFloat(game.puzzle.rows) - 1)
 

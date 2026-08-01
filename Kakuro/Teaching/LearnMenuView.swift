@@ -23,7 +23,7 @@ struct LearnMenuView: View {
             }
         }
         .navigationTitle("Learn")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationTitleDisplay(.large)
     }
 
     private func lessonRow(_ info: TutorialPuzzles.LessonInfo) -> some View {
@@ -128,7 +128,7 @@ struct PracticeMenuView: View {
             }
         }
         .navigationTitle("Practice")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationTitleDisplay(.large)
     }
 
     private func row(_ technique: Technique) -> some View {

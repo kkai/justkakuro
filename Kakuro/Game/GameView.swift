@@ -29,7 +29,11 @@ struct GameView: View {
                 pauseOverlay
             }
         }
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationTitleDisplay(.inline)
+        .puzzleKeyboard { command in
+            game.handle(command)
+            if case .digit = command { Haptics.tap() }
+        }
         .toolbar { toolbarContent }
         .task(id: game.phase) {
             guard game.phase == .playing else { return }
@@ -114,6 +118,13 @@ struct GameView: View {
                             .frame(maxWidth: 420)
                     }
                 }
+                // Board and pad sit together in the middle of a wide window
+                // rather than being pushed to opposite edges of it. The second
+                // frame centres on both axes: a GeometryReader aligns its
+                // content top-leading, which left a Mac window with the board
+                // jammed into the top-left and the bottom half empty.
+                .frame(maxWidth: 980)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 VStack(spacing: 12) {
                     statusRow
@@ -156,7 +167,7 @@ struct GameView: View {
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        ToolbarItem(placement: .topBarTrailing) {
+        ToolbarItem(placement: .primaryTrailing) {
             Button {
                 requestHint()
             } label: {
@@ -164,7 +175,7 @@ struct GameView: View {
             }
             .accessibilityLabel("Hint")
         }
-        ToolbarItem(placement: .topBarTrailing) {
+        ToolbarItem(placement: .primaryTrailing) {
             Menu {
                 Button("Auto notes") { game.fillAutoNotes() }
                 Button(game.phase == .paused ? "Resume" : "Pause") {
@@ -289,7 +300,7 @@ struct GameView: View {
             .buttonStyle(.plain)
         }
         .padding(24)
-        .presentationDetents([.medium])
+        .mediumSheet()
         .presentationBackground(Theme.paper)
     }
 

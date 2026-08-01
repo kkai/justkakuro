@@ -29,7 +29,14 @@ struct PracticeView: View {
             }
         }
         .navigationTitle(technique.displayName)
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationTitleDisplay(.inline)
+        .puzzleKeyboard { command in
+            // Keys do nothing while the drill is still being generated, or when
+            // the screen is showing the paywall instead of a board.
+            guard let game else { return }
+            game.handle(command)
+            if case .digit = command { Haptics.tap() }
+        }
         .task(id: variant) {
             // Guard before generating: a drill search is expensive, and this
             // route can be reached with a stale path after a refund.
@@ -89,7 +96,7 @@ struct PracticeView: View {
         .frame(maxWidth: 560)
         .frame(maxWidth: .infinity)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItem(placement: .primaryTrailing) {
                 Button {
                     usedHint = true
                     hint = hint.map { hintEngine.escalate($0, for: game, mastery: mastery) }

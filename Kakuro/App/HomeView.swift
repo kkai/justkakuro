@@ -47,7 +47,12 @@ struct HomeView: View {
                 .frame(maxWidth: .infinity)
             }
         }
+        // Home draws its own title, so the bar would only add a second one.
+        // There is no window-toolbar equivalent to hide on macOS: the window has
+        // no toolbar to begin with.
+        #if os(iOS)
         .toolbar(.hidden, for: .navigationBar)
+        #endif
         .task {
             guard !didRestore else { return }
             didRestore = true
@@ -149,23 +154,58 @@ struct HomeView: View {
         .buttonStyle(.plain)
     }
 
+    /// Quiet row label, matching the secondary-text treatment used for the
+    /// status row and the Settings subtitles.
+    private func rowLabel(_ text: String) -> some View {
+        Text(text)
+            .font(.subheadline.weight(.medium))
+            .foregroundStyle(Theme.inkSoft)
+    }
+
     private var newGameCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("New game")
                 .font(Theme.heading)
                 .foregroundStyle(Theme.ink)
-            Picker("Size", selection: $newGameSize) {
-                ForEach(BoardSize.allCases) { size in
-                    Text(size.displayName).tag(size)
+            // A Grid, so both rows share one label column and the two segmented
+            // controls start at the same x. iOS discards a segmented picker's
+            // title, which is why this read fine there while macOS, which draws
+            // the title as a leading label, staggered them by the difference
+            // between "Size" and "Difficulty".
+            //
+            // The labels are worth their space on both platforms: each row has a
+            // segment called Medium, meaning two different things, so without
+            // them the pair is genuinely ambiguous.
+            Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 10) {
+                GridRow {
+                    rowLabel("Size")
+                    Picker("Size", selection: $newGameSize) {
+                        ForEach(BoardSize.allCases) { size in
+                            Text(size.displayName).tag(size)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    // Fill the column so both controls end where Play does.
+                    // macOS sizes a segmented picker to its content, which left
+                    // them stopping short of the card's right edge.
+                    .frame(maxWidth: .infinity)
+                }
+                GridRow {
+                    rowLabel("Difficulty")
+                    Picker("Difficulty", selection: $newGameDifficulty) {
+                        ForEach(Difficulty.allCases) { difficulty in
+                            Text(difficulty.displayName).tag(difficulty)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    // Fill the column so both controls end where Play does.
+                    // macOS sizes a segmented picker to its content, which left
+                    // them stopping short of the card's right edge.
+                    .frame(maxWidth: .infinity)
                 }
             }
-            .pickerStyle(.segmented)
-            Picker("Difficulty", selection: $newGameDifficulty) {
-                ForEach(Difficulty.allCases) { difficulty in
-                    Text(difficulty.displayName).tag(difficulty)
-                }
-            }
-            .pickerStyle(.segmented)
             Button {
                 // No prefetch here — the selection is already warm, and the
                 // loader claims that entry rather than racing it.

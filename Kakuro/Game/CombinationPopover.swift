@@ -17,13 +17,17 @@ struct CombinationSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 22) {
+            HStack(alignment: .top) {
+                Spacer(minLength: 0)
+                SheetCloseButton()
+            }
             ForEach(selection.runs) { run in
                 CombinationPopover(run: run, combinations: combinations(run))
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(20)
-        .presentationDetents([.medium])
+        .mediumSheet()
         .presentationBackground(Theme.paper)
     }
 }

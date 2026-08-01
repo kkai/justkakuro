@@ -43,6 +43,16 @@ struct KakuroApp: App {
                 .onAppear {
                     Haptics.enabled = progress.settings.hapticsEnabled
                 }
+                // Tall enough for the stacked phone layout to stay the sensible
+                // one at the default size, and wide enough that widening the
+                // window is what switches to board-beside-pad.
+                #if os(macOS)
+                .frame(minWidth: 620, minHeight: 640)
+                #endif
         }
+        #if os(macOS)
+        .defaultSize(width: 720, height: 820)
+        .windowResizability(.contentMinSize)
+        #endif
     }
 }

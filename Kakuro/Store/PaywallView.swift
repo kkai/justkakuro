@@ -33,9 +33,14 @@ struct PaywallView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(context.feature.headline)
-                .font(Theme.heading)
-                .foregroundStyle(Theme.ink)
+            HStack(alignment: .top, spacing: 12) {
+                Text(context.feature.headline)
+                    .font(Theme.heading)
+                    .foregroundStyle(Theme.ink)
+                Spacer(minLength: 0)
+                // The only way out that does not involve buying something.
+                SheetCloseButton()
+            }
             Text(context.feature.pitch)
                 .font(.subheadline)
                 .foregroundStyle(Theme.inkSoft)
