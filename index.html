@@ -12,13 +12,13 @@
   :root{
     --paper:#f2f3ee; --surface:#fff; --ink:#22262b; --ink-soft:#6b7280;
     --block:#2b323f; --indigo:#3b5ba5; --wash:rgba(59,91,165,.13);
-    --done:#48856a; --wrong:#c44338; --line:rgba(34,38,43,.13);
+    --done:#48856a; --wrong:#c44338; --line:rgba(34,38,43,.13); --grid:rgba(34,38,43,.34);
     --cell:clamp(46px,12vw,64px);
   }
   @media (prefers-color-scheme:dark){
     :root{ --paper:#15171b; --surface:#1d2026; --ink:#e9ebe7; --ink-soft:#98a0ac;
            --block:#0f1216; --indigo:#8aa4e0; --wash:rgba(138,164,224,.16);
-           --done:#6fb894; --wrong:#e0796e; --line:rgba(233,235,231,.15); }
+           --done:#6fb894; --wrong:#e0796e; --line:rgba(233,235,231,.15); --grid:rgba(233,235,231,.30); }
   }
   *{box-sizing:border-box}
   html{-webkit-text-size-adjust:100%}
@@ -51,25 +51,30 @@
   .lede{font-size:1.15rem;max-width:38rem;margin-top:1.6rem}
 
   /* ---- the board ---------------------------------------------------- */
-  .play{margin:2.5rem 0 0;padding:1.5rem;background:var(--surface);
-        border:1px solid var(--line);border-radius:18px}
-  .eyebrow{font-size:.76rem;letter-spacing:.13em;text-transform:uppercase;
-           color:var(--ink-soft);font-weight:600;margin:0 0 1rem}
-  .board{display:grid;grid-template-columns:repeat(4,var(--cell));
-         gap:2px;background:var(--line);border:2px solid var(--block);
-         width:max-content;max-width:100%;border-radius:4px;overflow:hidden}
+  .play{margin:2.5rem 0 0;padding:1.6rem 1.7rem;background:var(--surface);
+        border:1px solid var(--line);border-radius:18px;
+        display:grid;gap:.4rem 2.4rem;
+        grid-template-columns:auto minmax(15rem,1fr);
+        grid-template-areas:"eyebrow eyebrow" "board side";align-items:start}
+  .eyebrow{grid-area:eyebrow;font-size:.76rem;letter-spacing:.13em;text-transform:uppercase;
+           color:var(--ink-soft);font-weight:600;margin:0 0 1.1rem}
+  .board{grid-area:board;display:grid;grid-template-columns:repeat(4,var(--cell));
+         gap:1.5px;background:var(--grid);border:2px solid var(--block);
+         width:max-content;max-width:100%;border-radius:5px;overflow:hidden}
+  .side{grid-area:side;min-width:0}
   .sq{width:var(--cell);height:var(--cell);background:var(--surface);
       display:flex;align-items:center;justify-content:center;position:relative;
-      font-family:Fraunces,Georgia,serif;font-size:calc(var(--cell)*.5);font-weight:600}
+      font-family:Fraunces,Georgia,serif;font-size:calc(var(--cell)*.52);font-weight:600}
   .sq.block{background:var(--block)}
   .sq.clue{background:var(--block);color:#eef0ea}
   .sq.clue::before{content:"";position:absolute;inset:0;
-      background:linear-gradient(to bottom right,transparent calc(50% - .6px),
-                 rgba(238,240,234,.42) calc(50% - .6px),rgba(238,240,234,.42) calc(50% + .6px),
-                 transparent calc(50% + .6px));}
-  .sq .across,.sq .down{position:absolute;font-size:calc(var(--cell)*.3);font-weight:600;line-height:1}
-  .sq .across{top:9%;right:11%}
-  .sq .down{bottom:9%;left:11%}
+      background:linear-gradient(to bottom right,transparent calc(50% - .5px),
+                 rgba(238,240,234,.34) calc(50% - .5px),rgba(238,240,234,.34) calc(50% + .5px),
+                 transparent calc(50% + .5px));}
+  .sq .across,.sq .down{position:absolute;font-size:calc(var(--cell)*.31);
+      font-weight:600;line-height:1;font-variant-numeric:lining-nums}
+  .sq .across{top:11%;right:10%}
+  .sq .down{bottom:11%;left:10%}
   .sq.white{cursor:pointer;color:var(--ink);transition:background .12s}
   .sq.white:hover{background:var(--wash)}
   .sq.white.on{background:var(--wash);box-shadow:inset 0 0 0 2px var(--indigo)}
@@ -78,17 +83,22 @@
   .board.solved .sq.white{color:var(--done)}
 
   .pad{display:grid;grid-template-columns:repeat(5,1fr);gap:.4rem;
-       margin:1rem 0 0;max-width:calc(var(--cell)*4 + 6px)}
+       margin:1.1rem 0 0;max-width:20rem}
   .pad button{font-family:Fraunces,Georgia,serif;font-size:1.15rem;font-weight:600;
        padding:.55rem 0;background:var(--paper);color:var(--ink);
        border:1px solid var(--line);border-radius:9px;cursor:pointer}
   .pad button:hover{background:var(--wash);border-color:var(--indigo)}
   .pad button:focus-visible{outline:2px solid var(--indigo);outline-offset:2px}
 
-  .status{margin:1.1rem 0 0;min-height:3.2em;font-size:.97rem;color:var(--ink-soft);max-width:34rem}
+  .status{margin:0;min-height:4.4em;font-size:.98rem;color:var(--ink-soft)}
   .status strong{color:var(--ink)}
   .status.win{color:var(--done)}
-  .tools{display:flex;gap:1.2rem;margin:.9rem 0 0;font-size:.9rem}
+  .tools{display:flex;gap:1.2rem;margin:1rem 0 0;font-size:.9rem}
+  @media (max-width:700px){
+    .play{grid-template-columns:1fr;grid-template-areas:"eyebrow" "board" "side";gap:0}
+    .side{margin-top:1.2rem}
+    .status{min-height:3.2em}
+  }
   .tools button{background:none;border:0;padding:0;color:var(--indigo);
        cursor:pointer;font:inherit;text-decoration:underline;text-underline-offset:3px}
 
@@ -123,11 +133,13 @@
 <section class="play">
   <p class="eyebrow">Try one</p>
   <div class="board" id="board" role="grid" aria-label="Kakuro puzzle, three rows by four columns"></div>
-  <div class="pad" id="pad" aria-label="Digit entry"></div>
-  <p class="status" id="status">Pick a cell, then a digit. Or use arrow keys and type.</p>
-  <div class="tools">
-    <button type="button" id="nudge">Where do I start?</button>
-    <button type="button" id="reset">Clear</button>
+  <div class="side">
+    <p class="status" id="status">Pick a cell, then a digit. Or use the arrow keys and type.</p>
+    <div class="pad" id="pad" aria-label="Digit entry"></div>
+    <div class="tools">
+      <button type="button" id="nudge">Where do I start?</button>
+      <button type="button" id="reset">Clear</button>
+    </div>
   </div>
 </section>
 
