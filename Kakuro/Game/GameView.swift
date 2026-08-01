@@ -115,15 +115,26 @@ struct GameView: View {
                     VStack(spacing: 20) {
                         statusRow
                         NumberPadView(game: game)
-                            .frame(maxWidth: 420)
                     }
+                    // The cap belongs to the whole column, not just the pad.
+                    // statusRow stretches to fill its width, so capping only the
+                    // pad left the column expanding and pushed the keypad away
+                    // from the board with the difficulty and timer strung out
+                    // across the gap.
+                    .frame(maxWidth: 420)
                 }
-                // Board and pad sit together in the middle of a wide window
-                // rather than being pushed to opposite edges of it. The second
-                // frame centres on both axes: a GeometryReader aligns its
-                // content top-leading, which left a Mac window with the board
-                // jammed into the top-left and the bottom half empty.
-                .frame(maxWidth: 980)
+                // Centred on both axes: a GeometryReader aligns its content
+                // top-leading, which left a Mac window with the board jammed
+                // into the top-left and the bottom half empty.
+                //
+                // The cap keeps the two halves together. Without it the pad
+                // column expands to fill whatever is left and the board and
+                // keypad drift to opposite edges of a wide window. 1120 is
+                // deliberate: minus the 420 pad and 32 spacing it leaves 668 for
+                // the board, which is just past what a small board can use at
+                // the 88pt cell cap, so the board reaches its own limit rather
+                // than being squeezed by this one.
+                .frame(maxWidth: 1120)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 VStack(spacing: 12) {
