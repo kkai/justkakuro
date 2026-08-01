@@ -155,6 +155,14 @@ struct TutorialView: View {
                 .shadow(color: .black.opacity(0.06), radius: 10, y: 3)
         )
         .animation(Motion.overlay, value: engine.stepIndex)
+        #if os(tvOS)
+        // Next sits at the bubble's leading edge while the focused cell is
+        // usually mid-board, so moving down from the board searched straight
+        // past it and landed on the keypad. A focus section makes the engine
+        // aim at the bubble as a whole and find the button inside it, which is
+        // the difference between a lesson you can advance and one you cannot.
+        .focusSection()
+        #endif
     }
 }
 
