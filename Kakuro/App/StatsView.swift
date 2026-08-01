@@ -21,7 +21,7 @@ struct StatsView: View {
                         masteryCard
                     }
                     .padding(20)
-                    .frame(maxWidth: 560)
+                    .frame(maxWidth: Metrics.column)
                     .frame(maxWidth: .infinity)
                 }
             }
@@ -171,7 +171,7 @@ struct SettingsView: View {
                     }
                 }
                 .padding(20)
-                .frame(maxWidth: 560)
+                .frame(maxWidth: Metrics.column)
                 .frame(maxWidth: .infinity)
             }
         }
@@ -216,7 +216,7 @@ struct SettingsView: View {
             .padding(14)
             .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.surface))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.kakuro)
     }
 
     private func toggleRow(_ title: String, subtitle: String, isOn: Binding<Bool>) -> some View {

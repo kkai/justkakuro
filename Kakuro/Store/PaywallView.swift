@@ -16,7 +16,7 @@ struct PaywallView: View {
                 purchaseControls
             }
             .padding(24)
-            .frame(maxWidth: 560)
+            .frame(maxWidth: Metrics.column)
             .frame(maxWidth: .infinity)
         }
         .background(Theme.paper)
@@ -91,7 +91,7 @@ struct PaywallView: View {
                 .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Theme.indigo))
                 .foregroundStyle(.white)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.kakuro)
             // Both controls key off the same flag, so a purchase and a restore
             // can never be started on top of each other.
             .disabled(entitlements.purchaseState.isBusy)
@@ -113,7 +113,7 @@ struct PaywallView: View {
                 .font(.footnote)
                 .foregroundStyle(Theme.indigo)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.kakuro)
             .disabled(entitlements.purchaseState.isBusy)
 
             statusLine

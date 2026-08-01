@@ -1,4 +1,4 @@
-#if canImport(UIKit)
+#if os(iOS)
 import UIKit
 #endif
 
@@ -8,17 +8,23 @@ import UIKit
 /// is `NS_SWIFT_UI_ACTOR`, and `enabled` is mutable global state that would be a
 /// hard error under `nonisolated`. Do not "fix" this for consistency.
 ///
-/// On macOS every method is a no-op. The only thing AppKit offers is
-/// `NSHapticFeedbackManager`, which fires in the trackpad rather than the
-/// machine, has three fixed patterns and no intensity, and does nothing at all
-/// for someone on a mouse or an external keyboard. There is no honest mapping
-/// for "digit entered", so the calls stay and do nothing, and every call site
-/// keeps compiling unchanged.
+/// Off iOS every method is a no-op, and the guard is `os(iOS)` rather than
+/// `canImport(UIKit)` for a reason worth knowing: **UIKit imports fine on tvOS,
+/// but the feedback generators do not exist there**. The looser guard sent tvOS
+/// into this branch and produced four "unavailable in tvOS" errors while the
+/// stubs it needed sat unreachable below. `Theme` keeps `canImport(UIKit)`
+/// because its UIKit path genuinely works on tvOS, so the same idiom is correct
+/// in one file and wrong in the other.
+///
+/// macOS has `NSHapticFeedbackManager`, which fires in the trackpad rather than
+/// the machine and does nothing for someone on a mouse. tvOS has nothing at all.
+/// Neither is an honest mapping for "digit entered", so the calls stay and do
+/// nothing, and every call site keeps compiling unchanged.
 @MainActor
 enum Haptics {
     static var enabled = true
 
-    #if canImport(UIKit)
+    #if os(iOS)
 
     private static let light = UIImpactFeedbackGenerator(style: .light)
     private static let soft = UIImpactFeedbackGenerator(style: .soft)
