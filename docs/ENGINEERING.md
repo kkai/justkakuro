@@ -190,7 +190,7 @@ searched. Everything else uses `Options.accepts`, a predicate checked against th
 solve histogram inside the search, which replaced 24 generate-and-discard rounds
 with one filtered search (measured 0.004–0.115s, from up to 1.23s).
 
-## The privacy manifest must contain no comments
+## The privacy manifest key is NSPrivacyAccessedAPITypeReasons
 
 `Kakuro/PrivacyInfo.xcprivacy` declares one required-reason API: `UserDefaults`
 under reason `CA92.1`, meaning the app reads and writes only its own defaults and
@@ -198,12 +198,21 @@ nothing leaves the device. `ProgressStore` keeps settings, stats, best times,
 mastery and the saved game; `EntitlementStore` caches the purchase flag so a
 paying customer does not see locks on the first frame after launch.
 
-That explanation lives here rather than in the file. Build 2 shipped with an XML
-comment inside the `NSPrivacyAccessedAPIReasons` array and was rejected with
-**ITMS-91056, invalid privacy manifest**. Neither `plutil -lint` nor
-`altool --validate-app` catches it: the manifest is valid property list, and
-Apple's privacy-manifest validator runs later during processing. Keep the file to
-documented keys and string values only.
+Builds 2 and 3 were both rejected with **ITMS-91056** because the reasons array
+was keyed `NSPrivacyAccessedAPIReasons`. Apple's key is
+`NSPrivacyAccessedAPITypeReasons`. One missing word, and the manifest is invalid.
+
+Nothing in the local toolchain finds this. The file is valid property list, so
+`plutil -lint` passes and `altool --validate-app` passes, and the build even
+processes to `VALID` in App Store Connect. Apple's privacy-manifest validator
+runs after processing and reports by email only, which means the round trip is
+roughly an hour per attempt.
+
+`privacyManifestUsesApplesKeyNames` in `KakuroTests/ReleaseBuildTests.swift` is
+the substitute. It checks the manifest against key names written out by hand from
+Apple's documentation. Build 2's diagnosis went wrong by building its allowlist
+from the manifest itself, which compared the misspelling against a copy of the
+misspelling and called it valid, so the sets in that test stay hardcoded.
 
 ## Statistics invariants
 
