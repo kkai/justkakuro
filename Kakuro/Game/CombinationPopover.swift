@@ -40,7 +40,7 @@ struct CombinationPopover: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 6) {
                 Image(systemName: run.orientation == .across ? "arrow.right" : "arrow.down")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: Metrics.glyph, weight: .semibold))
                     .foregroundStyle(Theme.inkSoft)
                 Text("\(run.sum) in \(run.length)")
                     .font(Theme.heading)

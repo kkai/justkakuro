@@ -27,7 +27,7 @@ struct HintBanner: View {
                 Spacer()
                 Button(action: onDismiss) {
                     Image(systemName: "xmark")
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(size: Metrics.glyph, weight: .semibold))
                         .foregroundStyle(Theme.inkSoft)
                 }
                 .accessibilityLabel("Dismiss hint")

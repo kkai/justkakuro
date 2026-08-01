@@ -210,7 +210,7 @@ struct SettingsView: View {
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: Metrics.glyph, weight: .medium))
                     .foregroundStyle(Theme.inkSoft)
             }
             .padding(14)
