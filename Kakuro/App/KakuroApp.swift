@@ -54,5 +54,14 @@ struct KakuroApp: App {
         .defaultSize(width: 720, height: 820)
         .windowResizability(.contentMinSize)
         #endif
+        #if os(visionOS)
+        // A visionOS window opens very wide by default, which left the 560pt
+        // reading column stranded in the middle of a large dark slab with empty
+        // margins either side. Sized to the content instead, so the window is
+        // the app rather than a backdrop for it. Taller than wide keeps the
+        // stacked board-over-keypad arrangement, which suits a window you look
+        // at head-on.
+        .defaultSize(width: 760, height: 900)
+        #endif
     }
 }
