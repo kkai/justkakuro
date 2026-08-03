@@ -254,7 +254,7 @@ struct StoreKitEntitlementSource: EntitlementSource {
         guard let product = await product(productID) else {
             throw StoreUnavailable()
         }
-        switch try await product.purchase() {
+        switch try await startPurchase(of: product) {
         case .success(let verification):
             switch verification {
             case .verified(let transaction):
@@ -273,6 +273,26 @@ struct StoreKitEntitlementSource: EntitlementSource {
         @unknown default:
             return .cancelled
         }
+    }
+
+    /// Starts the purchase sheet.
+    ///
+    /// visionOS does not have the plain `purchase()`: a purchase there is
+    /// confirmed in a specific scene, because a Vision Pro can have several of
+    /// this app's windows open at once and the system has to know which one the
+    /// sheet belongs to. Everywhere else there is exactly one place it could
+    /// appear, so the scene is implicit.
+    private func startPurchase(of product: Product) async throws -> Product.PurchaseResult {
+        #if os(visionOS)
+        let scene = await MainActor.run {
+            UIApplication.shared.connectedScenes
+                .first { $0.activationState == .foregroundActive } as? UIWindowScene
+        }
+        guard let scene else { throw StoreUnavailable() }
+        return try await product.purchase(confirmIn: scene)
+        #else
+        return try await product.purchase()
+        #endif
     }
 
     func restore() async throws {
