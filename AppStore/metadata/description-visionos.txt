@@ -1,0 +1,21 @@
+Just Kakuro teaches you to play Kakuro properly, then gets out of the way.
+
+Kakuro is a crossword with sums instead of words. Every run of white cells adds up to its clue, and no digit repeats inside a run. That is the whole rulebook. Getting good at it is another matter, and that is what this app is for.
+
+Nine lessons take you from the rules to the techniques experienced solvers use without thinking: magic blocks, cross-referencing, min-max bounds, hidden singles, combination logic. Each one is a short board where the technique is the way through, rather than a page of text to read.
+
+When you get stuck in a real game, the hint button names the technique that applies and shows you why it works. It will fill the cell in if you insist, but that is the last thing it offers rather than the first.
+
+Practice drills let you rehearse one technique at a time. Mastery counts only the deductions you worked out yourself, so the progress path reflects what you can actually do.
+
+On Apple Vision Pro the board sits in a window you can place wherever you like and leave there. Look at a square and pinch to select it, then pick a digit the same way. Nothing is buried in a menu: the keypad, pencil marks and the hint button are all on screen at once.
+
+Every puzzle has exactly one solution, and every puzzle can be finished by reasoning alone. The app proves both before a board ever reaches you. You are never asked to guess.
+
+FREE
+The rules lesson, No Repeats and Magic Blocks. Small and medium boards at every difficulty. An error check that tells you when something has gone wrong.
+
+ONE PURCHASE UNLOCKS
+Six more lessons. Every practice drill. The hints that teach instead of just answering. Large boards. Your stats and technique path.
+
+No ads, no subscription, and none of the timers, energy or coins that puzzle apps tend to arrive with. Everything works offline.
