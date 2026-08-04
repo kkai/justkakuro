@@ -214,6 +214,42 @@ Apple's documentation. Build 2's diagnosis went wrong by building its allowlist
 from the manifest itself, which compared the misspelling against a copy of the
 misspelling and called it valid, so the sets in that test stay hardcoded.
 
+## The first in-app purchase must ride along with a version submission
+
+Just Kakuro's visionOS 1.0 was rejected under **Guideline 2.1(b)** with "one or
+more of the In-App Purchase products have not been submitted for review". The
+IAP was complete: price, localization, promotional image, and an App Review
+screenshot already `COMPLETE`. Its state was `READY_TO_SUBMIT`, which means
+configured but never attached to anything.
+
+An in-app purchase is not reviewed because it exists. It is reviewed because it
+is an *item in a review submission*, alongside the app version. Every one of the
+four platform submissions contained exactly one item, the app version, so the
+IAP was invisible to review.
+
+Two things about the API cost real time and are worth writing down:
+
+`POST /v1/inAppPurchaseSubmissions` looks like the answer and is not, for a
+first submission. It returns "InAppPurchase X has no pending version for
+submission" even when the IAP has a version sitting in `READY_FOR_REVIEW`. That
+endpoint is for an IAP being updated on an app that is already approved.
+
+The relationship on `reviewSubmissionItems` is **`inAppPurchaseVersion`**,
+pointing at an `inAppPurchaseVersions` id, not `inAppPurchaseV2` and not the IAP
+id. `inAppPurchaseVersion` does not appear in the list of valid `include`
+parameters, so it cannot be discovered by probing `include`; it only shows up
+when a POST is attempted.
+
+The recovery, once a submission has been rejected, is short: cancel it with
+`PATCH {canceled: true}`. App Store Connect then creates a replacement
+submission **already containing the IAP version**, which is why trying to add
+the IAP again returns `RELATIONSHIP.INVALID.NOT_ALLOWED`. Add the app version to
+that new submission and submit it.
+
+An IAP is approved once for the whole app, not per platform, so a single
+submission carrying it is enough to satisfy the other platforms queued behind
+it.
+
 ## Statistics invariants
 
 - **Background = paused.** `GameView` pauses on `scenePhase` leaving `.active`.
