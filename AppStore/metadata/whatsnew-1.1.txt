@@ -1,0 +1,1 @@
+A swipe from the left edge no longer drops you out of a live puzzle — the Back button is now the only way out of a game. The timer also pauses the moment you leave a board, so time away is never counted against you.

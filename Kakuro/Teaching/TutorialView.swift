@@ -22,6 +22,7 @@ struct TutorialView: View {
         }
         .navigationTitle(engine?.lesson.title ?? "")
         .navigationTitleDisplay(.inline)
+        .swipeBackDisabled()
         .puzzleKeyboard { command in
             guard let engine else { return }
             // Everything goes through the engine, never through the game. The

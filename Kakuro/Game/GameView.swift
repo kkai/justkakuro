@@ -62,6 +62,7 @@ struct GameView: View {
         .animation(Motion.overlay, value: choosingDigit)
         #endif
         .navigationTitleDisplay(.inline)
+        .swipeBackDisabled()
         .puzzleKeyboard { command in
             game.handle(command)
             if case .digit = command { Haptics.tap() }
@@ -107,7 +108,13 @@ struct GameView: View {
                 persist()
             }
         }
-        .onDisappear { persist() }
+        // Pause as well as save: leaving via Back otherwise keeps `lastTick`
+        // set, exactly the wall-clock folding the scene-phase handler above
+        // exists to prevent.
+        .onDisappear {
+            game.pause()
+            persist()
+        }
         .sheet(isPresented: $showWinSheet) { winSheet }
         .sheet(item: $tappedClue) { selection in
             CombinationSheet(selection: selection) { game.remainingCombinations(for: $0) }

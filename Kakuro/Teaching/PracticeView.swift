@@ -30,6 +30,7 @@ struct PracticeView: View {
         }
         .navigationTitle(technique.displayName)
         .navigationTitleDisplay(.inline)
+        .swipeBackDisabled()
         .puzzleKeyboard { command in
             // Keys do nothing while the drill is still being generated, or when
             // the screen is showing the paywall instead of a board.
